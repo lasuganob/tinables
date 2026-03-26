@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatCurrency, formatDate } from "./lib/format";
 import { emptyCategory, emptyTag } from "./constants/defaults";
 import { totalByType, groupCashflow, groupExpenseByCategory } from "./utils/transactions";
@@ -11,6 +11,39 @@ import { useAppData } from "./hooks/useAppData";
 import { useTransactionForm } from "./hooks/useTransactionForm";
 import { useCategoryForm } from "./hooks/useCategoryForm";
 import { useTagForm } from "./hooks/useTagForm";
+
+function SkeletonBlock({ className = "" }) {
+  return <div className={`skeleton-block ${className}`.trim()} aria-hidden="true" />;
+}
+
+function SkeletonTable({ rows = 5, columns = 7 }) {
+  return (
+    <div className="table-shell">
+      <table>
+        <thead>
+          <tr>
+            {Array.from({ length: columns }).map((_, index) => (
+              <th key={index}>
+                <SkeletonBlock className="skeleton-line skeleton-line--short" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: rows }).map((_, rowIndex) => (
+            <tr key={rowIndex}>
+              {Array.from({ length: columns }).map((__, columnIndex) => (
+                <td key={columnIndex}>
+                  <SkeletonBlock className="skeleton-line" />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function App() {
   const [selectedUser, setSelectedUser] = useState("");
@@ -25,6 +58,7 @@ function App() {
     startDate: "",
     endDate: ""
   });
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
 
   // ─── Hooks ────────────────────────────────────────────────────────────────
   const { error, setError, message, setMessage, isSaving, setIsSaving } = useFeedback();
@@ -43,6 +77,13 @@ function App() {
 
   const { tagForm, setTagForm, handleTagSubmit } =
     useTagForm({ refreshTags, ...feedback });
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setIsFilterLoading(false), 220);
+    setIsFilterLoading(true);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [selectedUser, dateFilter.mode, dateFilter.month, dateFilter.year, dateFilter.startDate, dateFilter.endDate]);
 
   // ─── Derived data ─────────────────────────────────────────────────────────
   const availableYears = useMemo(
@@ -196,6 +237,8 @@ function App() {
     setDateFilter((current) => ({ ...current, [key]: value }));
   }
 
+  const isViewLoading = isLoading || isFilterLoading;
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="app-shell">
@@ -304,20 +347,48 @@ function App() {
 
       {/* ── Stats ─────────────────────────────────────────────────────────── */}
       <section className="stats-grid">
-        <StatCard label="Income" value={formatCurrency(incomeTotal)} tone="income" />
-        <StatCard label="Expenses" value={formatCurrency(expenseTotal)} tone="expense" />
-        <StatCard label="Balance" value={formatCurrency(balance)} tone={balance >= 0 ? "income" : "expense"} />
+        {isViewLoading ? (
+          <>
+            <article className="stat-card"><SkeletonBlock className="skeleton-line skeleton-line--short" /><SkeletonBlock className="skeleton-line skeleton-line--title" /></article>
+            <article className="stat-card"><SkeletonBlock className="skeleton-line skeleton-line--short" /><SkeletonBlock className="skeleton-line skeleton-line--title" /></article>
+            <article className="stat-card"><SkeletonBlock className="skeleton-line skeleton-line--short" /><SkeletonBlock className="skeleton-line skeleton-line--title" /></article>
+          </>
+        ) : (
+          <>
+            <StatCard label="Income" value={formatCurrency(incomeTotal)} tone="income" />
+            <StatCard label="Expenses" value={formatCurrency(expenseTotal)} tone="expense" />
+            <StatCard label="Balance" value={formatCurrency(balance)} tone={balance >= 0 ? "income" : "expense"} />
+          </>
+        )}
       </section>
 
       {/* ── Transaction form + table ───────────────────────────────────────── */}
       <section className="workspace-grid">
         <article className="panel">
-          <div className="panel__header">
-            <div>
-              <p className="eyebrow">Transactions</p>
-              <h2>{transactionForm.id ? "Edit transaction" : "Add transaction"}</h2>
-            </div>
+        <div className="panel__header">
+          <div>
+            <p className="eyebrow">Transactions</p>
+            <h2>{transactionForm.id ? "Edit transaction" : "Add transaction"}</h2>
           </div>
+        </div>
+          {isViewLoading ? (
+            <div className="form-grid">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <label key={index} className="field">
+                  <SkeletonBlock className="skeleton-line skeleton-line--short" />
+                  <SkeletonBlock className="skeleton-field" />
+                </label>
+              ))}
+              <label className="field field--full">
+                <SkeletonBlock className="skeleton-line skeleton-line--short" />
+                <SkeletonBlock className="skeleton-field skeleton-field--tall" />
+              </label>
+              <div className="form-actions field--full">
+                <SkeletonBlock className="skeleton-button" />
+                <SkeletonBlock className="skeleton-button" />
+              </div>
+            </div>
+          ) : (
           <form className="form-grid" onSubmit={handleTransactionSubmit}>
             <label className="field">
               <span>Date</span>
@@ -410,6 +481,7 @@ function App() {
               ) : null}
             </div>
           </form>
+          )}
         </article>
 
         <article className="panel">
@@ -422,6 +494,9 @@ function App() {
               Show All
             </button>
           </div>
+          {isViewLoading ? (
+            <SkeletonTable rows={5} columns={7} />
+          ) : (
           <div className="table-shell">
             <table>
               <thead>
@@ -462,6 +537,7 @@ function App() {
               </tbody>
             </table>
           </div>
+          )}
         </article>
       </section>
 
@@ -502,18 +578,21 @@ function App() {
 
       {activeChart === "timeline" ? (
         <Modal title="Cashflow timeline" onClose={() => setActiveChart("")}>
-          <LineChart data={lineData} />
+          {isViewLoading ? <SkeletonBlock className="skeleton-chart" /> : <LineChart data={lineData} />}
         </Modal>
       ) : null}
 
       {activeChart === "breakdown" ? (
         <Modal title="Expense breakdown" onClose={() => setActiveChart("")}>
-          <PieChart data={pieData} />
+          {isViewLoading ? <SkeletonBlock className="skeleton-chart" /> : <PieChart data={pieData} />}
         </Modal>
       ) : null}
 
       {showAllTransactions ? (
         <Modal title="All transactions" onClose={() => setShowAllTransactions(false)}>
+          {isViewLoading ? (
+            <SkeletonTable rows={8} columns={7} />
+          ) : (
           <div className="table-shell">
             <table>
               <thead>
@@ -581,11 +660,43 @@ function App() {
               </tbody>
             </table>
           </div>
+          )}
         </Modal>
       ) : null}
 
       {activeManager === "categories" ? (
         <Modal title="Manage categories" onClose={() => setActiveManager("")}>
+          {isViewLoading ? (
+            <>
+              <div className="form-grid">
+                <label className="field">
+                  <SkeletonBlock className="skeleton-line skeleton-line--short" />
+                  <SkeletonBlock className="skeleton-field" />
+                </label>
+                <label className="field">
+                  <SkeletonBlock className="skeleton-line skeleton-line--short" />
+                  <SkeletonBlock className="skeleton-field" />
+                </label>
+                <div className="form-actions field--full">
+                  <SkeletonBlock className="skeleton-button" />
+                </div>
+              </div>
+              <div className="stack-list">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="stack-list__item">
+                    <div className="stack-list__content">
+                      <SkeletonBlock className="skeleton-line" />
+                      <SkeletonBlock className="skeleton-line skeleton-line--short" />
+                    </div>
+                    <div className="row-actions">
+                      <SkeletonBlock className="skeleton-button" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+          <>
           <form className="form-grid" onSubmit={handleCategorySubmit}>
             <label className="field">
               <span>Name</span>
@@ -631,11 +742,37 @@ function App() {
               </div>
             ))}
           </div>
+          </>
+          )}
         </Modal>
       ) : null}
 
       {activeManager === "tags" ? (
         <Modal title="Manage tags" onClose={() => setActiveManager("")}>
+          {isViewLoading ? (
+            <>
+              <div className="form-grid">
+                <label className="field field--full">
+                  <SkeletonBlock className="skeleton-line skeleton-line--short" />
+                  <SkeletonBlock className="skeleton-field" />
+                </label>
+                <div className="form-actions field--full">
+                  <SkeletonBlock className="skeleton-button" />
+                </div>
+              </div>
+              <div className="stack-list stack-list--chips">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="chip-card">
+                    <SkeletonBlock className="skeleton-line skeleton-line--short" />
+                    <div className="row-actions">
+                      <SkeletonBlock className="skeleton-button" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+          <>
           <form className="form-grid" onSubmit={handleTagSubmit}>
             <label className="field field--full">
               <span>Name</span>
@@ -668,6 +805,8 @@ function App() {
               </div>
             ))}
           </div>
+          </>
+          )}
         </Modal>
       ) : null}
     </div>
