@@ -77,6 +77,14 @@ function addRow(sheetName, payload) {
   return { success: true, id: payload.id };
 }
 
+function deleteRow(sheetName, id) {
+  var rows = getRows(sheetName).filter(function(row) {
+    return String(row.id) !== String(id);
+  });
+  writeRows(sheetName, rows);
+  return { success: true, id: id };
+}
+
 function updateRow(sheetName, payload) {
   var rows = getRows(sheetName);
   var index = rows.findIndex(function(row) {

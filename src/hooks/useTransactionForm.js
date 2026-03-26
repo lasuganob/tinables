@@ -36,7 +36,9 @@ export function useTransactionForm({ selectedUser, users, refreshTransactions, s
             ...transactionForm,
             id: transactionForm.id || `txn-${Date.now()}`,
             amount: Number(transactionForm.amount),
-            tags: transactionForm.tags.join(",")
+            tags: transactionForm.tags.length <= 1
+                ? String(transactionForm.tags[0] || "")
+                : transactionForm.tags.join(",")
         };
 
         try {
