@@ -26,15 +26,14 @@ export function useTransactionForm({ selectedUser, users, refreshTransactions, s
         });
     }
 
-    async function handleTransactionSubmit(event) {
-        event.preventDefault();
+    async function handleTransactionSubmit(id) {
         setIsSaving(true);
         setError("");
         setMessage("");
 
         const payload = {
             ...transactionForm,
-            id: transactionForm.id || `txn-${Date.now()}`,
+            id: transactionForm.id ? transactionForm.id : id,
             amount: Number(transactionForm.amount),
             tags: transactionForm.tags.length <= 1
                 ? String(transactionForm.tags[0] || "")
@@ -46,8 +45,10 @@ export function useTransactionForm({ selectedUser, users, refreshTransactions, s
             await refreshTransactions();
             resetTransactionForm();
             setMessage(`Transaction ${payload.id} saved.`);
+            return true;
         } catch (err) {
             setError(err.message);
+            return false;
         } finally {
             setIsSaving(false);
         }
