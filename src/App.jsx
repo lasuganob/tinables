@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { Alert, Box, Stack, IconButton } from "@mui/material";
-import { emptyCategory, emptyTag } from "./constants/defaults";
-import { formatCurrency, formatDate } from "./lib/format";
+import { emptyAccount, emptyCategory, emptyTag, fallbackAccountTypes } from "./constants/defaults";
+import { formatCurrency, formatDate, getCurrentMonthInAppTimeZone, parseDateValue } from "./lib/format";
 import {
   totalByType,
-  groupCashflow,
+  buildLineChartData,
   groupExpenseByCategory,
+  incomeByAccount,
+  computeAccountBalances,
 } from "./utils/transactions";
 import { useFeedback } from "./hooks/useFeedback";
 import { useAppData } from "./hooks/useAppData";
 import { useTransactionForm } from "./hooks/useTransactionForm";
 import { useCategoryForm } from "./hooks/useCategoryForm";
 import { useTagForm } from "./hooks/useTagForm";
+import { useAccountForm } from "./hooks/useAccountForm";
 
 import { HeaderSection } from "./sections/HeaderSection";
 import { GlobalFiltersSection } from "./sections/GlobalFiltersSection";
@@ -23,10 +26,11 @@ import { ManagersSection } from "./sections/ManagersSection";
 import CloseIcon from "@mui/icons-material/Close";
 
 function App() {
+  const utilitiesSeriesTagNames = ["Rent", "Internet", "Electricity", "Water"];
   const [selectedUser, setSelectedUser] = useState("");
   const [dateFilter, setDateFilter] = useState({
     mode: "month",
-    month: dayjs().format("YYYY-MM"),
+    month: getCurrentMonthInAppTimeZone(),
     year: "",
     startDate: "",
     endDate: "",
@@ -34,6 +38,8 @@ function App() {
   const [isFilterLoading, setIsFilterLoading] = useState(false);
   const [hasInitializedDefaultMonth, setHasInitializedDefaultMonth] =
     useState(false);
+  const [chartCategoryId, setChartCategoryId] = useState("");
+  const [chartTagIds, setChartTagIds] = useState([]);
 
   const { error, setError, message, setMessage, isSaving, setIsSaving } =
     useFeedback();
@@ -44,10 +50,13 @@ function App() {
     categories,
     tags,
     users,
+    accounts,
+    accountTypes,
     isLoading,
     refreshTransactions,
     refreshCategories,
     refreshTags,
+    refreshAccounts,
     handleDelete,
   } = useAppData({ selectedUser, ...feedback });
 
@@ -59,7 +68,10 @@ function App() {
   } = useTransactionForm({
     selectedUser,
     users,
+    transactions,
     refreshTransactions,
+    refreshAccounts,
+    accounts,
     ...feedback,
   });
 
@@ -68,6 +80,11 @@ function App() {
 
   const { tagForm, setTagForm, handleTagSubmit } = useTagForm({
     refreshTags,
+    ...feedback,
+  });
+
+  const { accountForm, setAccountForm, handleAccountSubmit } = useAccountForm({
+    refreshAccounts,
     ...feedback,
   });
 
@@ -102,7 +119,7 @@ function App() {
     }
 
     const mostRecentTransaction = [...transactions].sort(
-      (left, right) => new Date(right.date) - new Date(left.date),
+      (left, right) => parseDateValue(right.date) - parseDateValue(left.date),
     )[0];
 
     setDateFilter((current) => ({
@@ -110,7 +127,7 @@ function App() {
       mode: "month",
       month:
         String(mostRecentTransaction?.date || "").slice(0, 7) ||
-        dayjs().format("YYYY-MM"),
+        getCurrentMonthInAppTimeZone(),
     }));
     setHasInitializedDefaultMonth(true);
   }, [hasInitializedDefaultMonth, transactions]);
@@ -150,18 +167,10 @@ function App() {
     }, 0);
   }, [transactions]);
 
-  const lineData = useMemo(
-    () => groupCashflow(visibleTransactions),
-    [visibleTransactions],
-  );
   const pieData = useMemo(
     () => groupExpenseByCategory(visibleTransactions, categories),
     [visibleTransactions, categories],
   );
-  const incomeTotal = totalByType(visibleTransactions, "income");
-  const expenseTotal = totalByType(visibleTransactions, "expense");
-  const balance = incomeTotal - expenseTotal;
-  const isViewLoading = isLoading || isFilterLoading;
 
   const categoryNameById = useMemo(
     () =>
@@ -170,10 +179,44 @@ function App() {
       ),
     [categories],
   );
+  const accountNameById = useMemo(
+    () => new Map(accounts.map((account) => [String(account.id), account.name])),
+    [accounts],
+  );
   const tagNameById = useMemo(
     () => new Map(tags.map((tag) => [String(tag.id), tag.name])),
     [tags],
   );
+  const accountTypeOptions = useMemo(
+    () => (accountTypes.length ? accountTypes : fallbackAccountTypes),
+    [accountTypes],
+  );
+  const userNameById = useMemo(
+    () => new Map(users.map((user) => [String(user.id), user.name])),
+    [users],
+  );
+  const filteredAccountsForSummary = useMemo(() => {
+    if (!selectedUser) {
+      return accounts;
+    }
+
+    const userAccounts = accounts.filter((account) => {
+      const accountUserName = userNameById.get(String(account.user)) || "";
+      return !account.user || accountUserName === selectedUser;
+    });
+
+    return userAccounts;
+  }, [accounts, selectedUser, userNameById]);
+  const accountsTotal = useMemo(() => computeAccountBalances(filteredAccountsForSummary));
+  const incomeBreakdown = useMemo(
+    () => incomeByAccount(filteredAccountsForSummary),
+    [filteredAccountsForSummary],
+  );
+
+  const expenseTotal = totalByType(visibleTransactions, "expense");
+  const balance = accountsTotal - expenseTotal;
+  const isViewLoading = isLoading || isFilterLoading;
+
   const filteredCategories = useMemo(
     () =>
       categories.filter(
@@ -187,6 +230,79 @@ function App() {
       ),
     [categories, transactionForm.type],
   );
+  const chartCategoryOptions = useMemo(
+    () =>
+      categories.filter((category) => {
+        if (!selectedUser) {
+          return true;
+        }
+
+        return visibleTransactions.some(
+          (transaction) => String(transaction.category_id || "") === String(category.id)
+        );
+      }),
+    [categories, selectedUser, visibleTransactions],
+  );
+  const selectedChartCategory = useMemo(
+    () =>
+      categories.find(
+        (category) => String(category.id) === String(chartCategoryId),
+      ) || null,
+    [categories, chartCategoryId],
+  );
+  const isUtilitiesChart = useMemo(
+    () =>
+      String(selectedChartCategory?.name || "").trim().toLowerCase() ===
+      "utilities",
+    [selectedChartCategory],
+  );
+  const utilitySeriesTags = useMemo(
+    () =>
+      tags.filter((tag) =>
+        utilitiesSeriesTagNames.includes(String(tag.name || "").trim()),
+      ),
+    [tags],
+  );
+  const allowedUtilitySeriesTagIds = useMemo(
+    () => utilitySeriesTags.map((tag) => String(tag.id)),
+    [utilitySeriesTags],
+  );
+  const effectiveChartTagIds = useMemo(
+    () =>
+      isUtilitiesChart
+        ? chartTagIds.filter((tagId) =>
+            allowedUtilitySeriesTagIds.includes(String(tagId)),
+          )
+        : [],
+    [allowedUtilitySeriesTagIds, chartTagIds, isUtilitiesChart],
+  );
+  useEffect(() => {
+    if (!isUtilitiesChart && chartTagIds.length) {
+      setChartTagIds([]);
+      return;
+    }
+
+    if (
+      isUtilitiesChart &&
+      chartTagIds.some(
+        (tagId) => !allowedUtilitySeriesTagIds.includes(String(tagId)),
+      )
+    ) {
+      setChartTagIds(
+        chartTagIds.filter((tagId) =>
+          allowedUtilitySeriesTagIds.includes(String(tagId)),
+        ),
+      );
+    }
+  }, [allowedUtilitySeriesTagIds, chartTagIds, isUtilitiesChart]);
+  const lineChartData = useMemo(
+    () =>
+      buildLineChartData(visibleTransactions, categories, tags, {
+        selectedCategoryId: chartCategoryId,
+        selectedTagIds: effectiveChartTagIds
+      }),
+    [visibleTransactions, categories, tags, chartCategoryId, effectiveChartTagIds],
+  );
   const transactionFormTagIds = useMemo(
     () =>
       (transactionForm.tags || []).map((tagValue) => {
@@ -198,6 +314,37 @@ function App() {
         return matchedTag ? String(matchedTag.id) : directId;
       }),
     [transactionForm.tags, tagNameById, tags],
+  );
+  const availableAccounts = useMemo(
+    () => {
+      const filteredAccounts = accounts.filter((account) => {
+        if (
+          Number(account.is_active) !== 1 &&
+          String(account.id) !== String(transactionForm.account_id) &&
+          String(account.id) !== String(transactionForm.transfer_account_id)
+        ) {
+          return false;
+        }
+
+        if (!selectedUser) {
+          return true;
+        }
+
+        const owner =
+          users.find((user) => String(user.id) === String(account.user))
+            ?.name || "";
+        return !account.user || owner === selectedUser;
+      });
+
+      return filteredAccounts;
+    },
+    [
+      accounts,
+      selectedUser,
+      transactionForm.account_id,
+      transactionForm.transfer_account_id,
+      users,
+    ],
   );
 
   function updateDateFilter(key, value) {
@@ -276,15 +423,24 @@ function App() {
 
           <SummaryStatsSection
             isViewLoading={isViewLoading}
-            incomeTotal={incomeTotal}
+            accountsTotal={accountsTotal}
             expenseTotal={expenseTotal}
             balance={balance}
+            incomeBreakdown={incomeBreakdown}
+            users={users}
           />
 
           <ChartsSection
             isViewLoading={isViewLoading}
-            lineData={lineData}
+            lineChartData={lineChartData}
             pieData={pieData}
+            chartCategoryId={chartCategoryId}
+            setChartCategoryId={setChartCategoryId}
+            chartTagIds={effectiveChartTagIds}
+            setChartTagIds={setChartTagIds}
+            chartCategoryOptions={chartCategoryOptions}
+            isUtilitiesChart={isUtilitiesChart}
+            utilitySeriesTags={utilitySeriesTags}
           />
 
           <RecentTransactionsSection
@@ -292,11 +448,13 @@ function App() {
             formatDate={formatDate}
             formatCurrency={formatCurrency}
             categoryNameById={categoryNameById}
+            accountNameById={accountNameById}
             tagNameById={tagNameById}
             transactionForm={transactionForm}
             setTransactionForm={setTransactionForm}
             isSaving={isSaving}
             filteredCategories={filteredCategories}
+            accounts={filteredAccountsForSummary}
             users={users}
             transactionFormTagIds={transactionFormTagIds}
             tags={tags}
@@ -322,6 +480,14 @@ function App() {
             setTagForm={setTagForm}
             emptyTag={emptyTag}
             tags={tags}
+            handleAccountSubmit={handleAccountSubmit}
+            accountForm={accountForm}
+            setAccountForm={setAccountForm}
+            emptyAccount={emptyAccount}
+            accounts={availableAccounts}
+            accountTypes={accountTypeOptions}
+            users={users}
+            userNameById={userNameById}
           />
         </Stack>
       </Box>

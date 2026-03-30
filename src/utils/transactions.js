@@ -1,3 +1,5 @@
+import { parseDateValue } from "../lib/format";
+
 /**
  * Ensures `amount` is a number and `tags` is always an array of strings.
  */
@@ -5,6 +7,8 @@ export function normaliseTransaction(item) {
     return {
         ...item,
         amount: Number(item.amount || 0),
+        account_id: item.account_id ? String(item.account_id) : "",
+        transfer_account_id: item.transfer_account_id ? String(item.transfer_account_id) : "",
         tags: Array.isArray(item.tags)
             ? item.tags
             : String(item.tags || "")
@@ -15,7 +19,7 @@ export function normaliseTransaction(item) {
 }
 
 /**
- * Sums transactions of a given type ("income" | "expense").
+ * Sums transactions of a given type ("income" | "expense" | "transfer").
  */
 export function totalByType(transactions, type) {
     return transactions
@@ -23,23 +27,146 @@ export function totalByType(transactions, type) {
         .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
 }
 
-/**
- * Groups transactions by date and returns an array of { date, income, expense }.
- * Used for the line chart.
- */
-export function groupCashflow(transactions) {
-    const grouped = new Map();
+export function computeAccountBalances(accounts) {
+    return accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
+}
 
-    [...transactions]
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .forEach((transaction) => {
-            const key = transaction.date;
-            const current = grouped.get(key) || { date: key, income: 0, expense: 0 };
-            current[transaction.type] += Number(transaction.amount || 0);
-            grouped.set(key, current);
+export function incomeByAccount(accounts) {
+    const accountItems = accounts.map((account) => ({
+        id: String(account.id),
+        name: account.name,
+        value: Number(account.balance || 0),
+        user: account.user
+    }));
+
+    return accountItems.sort((left, right) => right.value - left.value);
+}
+
+
+function emptySeriesPointMap(dateKeys, seriesDefs) {
+    const pointMap = new Map();
+
+    dateKeys.forEach((dateKey) => {
+        const seriesPoints = {};
+        seriesDefs.forEach((seriesDef) => {
+            seriesPoints[seriesDef.key] = 0;
+        });
+        pointMap.set(dateKey, seriesPoints);
+    });
+
+    return pointMap;
+}
+
+export function buildLineChartData(transactions, categories, tags, chartFilters) {
+    const selectedCategoryId = String(chartFilters.selectedCategoryId || "");
+    const selectedTagIds = (chartFilters.selectedTagIds || []).map(String);
+    const activeTransactions = transactions.filter(
+        (transaction) => transaction.type === "income" || transaction.type === "expense"
+    );
+
+    const categoryFilteredTransactions = selectedCategoryId
+        ? activeTransactions.filter(
+            (transaction) => String(transaction.category_id || "") === selectedCategoryId
+        )
+        : activeTransactions;
+
+    const dateKeys = [
+        ...new Set(
+            categoryFilteredTransactions
+                .map((transaction) => String(transaction.date || ""))
+                .filter(Boolean)
+        )
+    ].sort((left, right) => parseDateValue(left) - parseDateValue(right));
+
+    if (!dateKeys.length) {
+        return { categories: [], series: [] };
+    }
+
+    if (selectedTagIds.length) {
+        const tagNameById = new Map(tags.map((tag) => [String(tag.id), tag.name]));
+        const seriesDefs = selectedTagIds.map((tagId, index) => ({
+            key: tagId,
+            name: tagNameById.get(tagId) || `Tag ${tagId}`,
+            color: ["#2563eb", "#f59e0b", "#7c3aed", "#059669", "#dc2626", "#0891b2"][index % 6]
+        }));
+        const pointsByDate = emptySeriesPointMap(dateKeys, seriesDefs);
+
+        categoryFilteredTransactions.forEach((transaction) => {
+            const transactionTags = (transaction.tags || []).map(String);
+            seriesDefs.forEach((seriesDef) => {
+                if (transactionTags.includes(seriesDef.key)) {
+                    const currentPoints = pointsByDate.get(String(transaction.date || ""));
+                    if (currentPoints) {
+                        currentPoints[seriesDef.key] += Number(transaction.amount || 0);
+                    }
+                }
+            });
         });
 
-    return [...grouped.values()];
+        return {
+            categories: dateKeys,
+            series: seriesDefs.map((seriesDef) => ({
+                name: seriesDef.name,
+                color: seriesDef.color,
+                data: dateKeys.map((dateKey) => pointsByDate.get(dateKey)?.[seriesDef.key] || 0)
+            }))
+        };
+    }
+
+    if (selectedCategoryId) {
+        const category = categories.find(
+            (item) => String(item.id) === selectedCategoryId
+        );
+        const categoryName = category?.name || "Selected Category";
+        const seriesKey = "selected-category";
+        const pointsByDate = emptySeriesPointMap(dateKeys, [{ key: seriesKey }]);
+
+        categoryFilteredTransactions.forEach((transaction) => {
+            const currentPoints = pointsByDate.get(String(transaction.date || ""));
+            if (currentPoints) {
+                currentPoints[seriesKey] += Number(transaction.amount || 0);
+            }
+        });
+
+        return {
+            categories: dateKeys,
+            series: [
+                {
+                    name: categoryName,
+                    color: category?.type === "income" ? "#059669" : "#dc2626",
+                    data: dateKeys.map((dateKey) => pointsByDate.get(dateKey)?.[seriesKey] || 0)
+                }
+            ]
+        };
+    }
+
+    const pointsByDate = emptySeriesPointMap(dateKeys, [
+        { key: "income" },
+        { key: "expense" }
+    ]);
+
+    categoryFilteredTransactions.forEach((transaction) => {
+        const currentPoints = pointsByDate.get(String(transaction.date || ""));
+        if (currentPoints && (transaction.type === "income" || transaction.type === "expense")) {
+            currentPoints[transaction.type] += Number(transaction.amount || 0);
+        }
+    });
+
+    return {
+        categories: dateKeys,
+        series: [
+            {
+                name: "Income",
+                color: "#059669",
+                data: dateKeys.map((dateKey) => pointsByDate.get(dateKey)?.income || 0)
+            },
+            {
+                name: "Expense",
+                color: "#dc2626",
+                data: dateKeys.map((dateKey) => pointsByDate.get(dateKey)?.expense || 0)
+            }
+        ]
+    };
 }
 
 /**

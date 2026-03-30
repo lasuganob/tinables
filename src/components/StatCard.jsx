@@ -1,6 +1,7 @@
-import { Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import { Button, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import HelpIcon from '@mui/icons-material/Help';
 
-export function StatCard({ label, value, tone = "neutral" }) {
+export function StatCard({ label, value, tone = "neutral", actionLabel = "", onAction }) {
     const toneStyles = {
         income: { color: "white", fontWeight: "bold", bgcolor: "success.main" },
         expense: { color: "white", fontWeight: "bold", bgcolor: "error.main" },
@@ -20,9 +21,16 @@ export function StatCard({ label, value, tone = "neutral" }) {
                             bgcolor: toneStyles[tone].bgcolor
                         }}
                     />
-                    <Typography variant="h4" fontWeight={700}>
-                        {value}
-                    </Typography>
+                    <Stack direction="row">
+                        <Typography variant="h4" fontWeight={700}>
+                            {value}
+                        </Typography>
+                        {actionLabel && onAction ? (
+                            <Button variant="text" size="small" onClick={onAction} sx={{ alignSelf: "flex-start", px: 0, minWidth: "auto" }}>
+                                <HelpIcon fontSize="small" />
+                            </Button>
+                        ) : null}
+                    </Stack>
                 </Stack>
             </CardContent>
         </Card>

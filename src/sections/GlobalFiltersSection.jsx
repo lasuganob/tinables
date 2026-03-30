@@ -1,7 +1,7 @@
 import { Box, Button, FormControl, InputLabel, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import dayjs from "dayjs";
+import { getCurrentMonthInAppTimeZone } from "../lib/format";
 
 export function GlobalFiltersSection({
     selectedUser,
@@ -19,10 +19,10 @@ export function GlobalFiltersSection({
                 <FilterListRoundedIcon color="secondary" />
                 <Typography variant="h6">Global Filters</Typography>
             </Stack>
-            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.1fr 1fr 1fr 1fr auto" } }}>
-                <FormControl sx={{ minWidth: 220 }}>
-                    <InputLabel>Contributor</InputLabel>
-                    <Select label="Contributor" value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)}>
+            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr 1fr", md: "1.1fr 1fr 1fr 1fr auto" } }}>
+                <FormControl>
+                    <InputLabel>Spendee/Depositor</InputLabel>
+                    <Select label="Spendee/Depositor" value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)}>
                         <MenuItem value="">All</MenuItem>
                         {users.map((user) => (
                             <MenuItem key={user.id} value={user.name}>{user.name}</MenuItem>
@@ -99,7 +99,7 @@ export function GlobalFiltersSection({
                     variant="outlined"
                     onClick={() => {
                         setSelectedUser("");
-                        setDateFilter({ mode: "month", month: dayjs().format("YYYY-MM"), year: "", startDate: "", endDate: "" })
+                        setDateFilter({ mode: "month", month: getCurrentMonthInAppTimeZone(), year: "", startDate: "", endDate: "" })
                     }}
                 >
                     Clear Filter

@@ -1,31 +1,38 @@
-var SPREADSHEET_ID = "REPLACE_WITH_YOUR_SPREADSHEET_ID";
+const SPREADSHEET_ID = "12pQ-tIfYjF-nrfzxYZkRQ29Vz-JqWYFK2BeitRbIGnQ";
+const APP_TIME_ZONE = "Asia/Manila";
 
 function jsonResponse(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(
-    ContentService.MimeType.JSON
+    ContentService.MimeType.JSON,
   );
 }
 
 function getSpreadsheet() {
-  if (SPREADSHEET_ID && SPREADSHEET_ID !== "REPLACE_WITH_YOUR_SPREADSHEET_ID") {
-    return SpreadsheetApp.openById(SPREADSHEET_ID);
-  }
-
-  var active = SpreadsheetApp.getActiveSpreadsheet();
-  if (!active) {
-    throw new Error(
-      "Spreadsheet not found. Set SPREADSHEET_ID in Code.gs or bind the script to the target sheet."
-    );
-  }
-  return active;
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
 function getSheet(sheetName) {
-  var sheet = getSpreadsheet().getSheetByName(sheetName);
-  if (!sheet) {
-    throw new Error("Missing sheet: " + sheetName);
-  }
+  const sheet = getSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) throw new Error(`Missing sheet: ${sheetName}`);
   return sheet;
+}
+
+function normaliseCellValue(header, value) {
+  if (header === "date" && value instanceof Date) {
+    return Utilities.formatDate(value, APP_TIME_ZONE, "yyyy-MM-dd");
+  }
+
+  return value;
+}
+
+function normaliseRow(headers, row) {
+  var item = {};
+
+  headers.forEach(function (header, index) {
+    item[header] = normaliseCellValue(header, row[index]);
+  });
+
+  return item;
 }
 
 function getRows(sheetName) {
@@ -37,23 +44,37 @@ function getRows(sheetName) {
 
   var headers = values.shift();
   return values
-    .filter(function(row) {
+    .filter(function (row) {
       return row.join("") !== "";
     })
-    .map(function(row) {
-      var item = {};
-      headers.forEach(function(header, index) {
-        item[header] = row[index];
-      });
-      return item;
+    .map(function (row) {
+      return normaliseRow(headers, row);
     });
+}
+
+function getRowById(sheetName, id) {
+  var sheet = getSheet(sheetName);
+  var values = sheet.getDataRange().getValues();
+  if (values.length === 0) return null;
+
+  var headers = values.shift();
+  var idColIndex = headers.indexOf("id");
+  if (idColIndex === -1) return null;
+
+  var row = values.find(function (row) {
+    return String(row[idColIndex]) === String(id);
+  });
+
+  if (!row) return null;
+
+  return normaliseRow(headers, row);
 }
 
 function writeRows(sheetName, rows) {
   var sheet = getSheet(sheetName);
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var nextValues = rows.map(function(row) {
-    return headers.map(function(header) {
+  var nextValues = rows.map(function (row) {
+    return headers.map(function (header) {
       return row[header] !== undefined ? row[header] : "";
     });
   });
@@ -63,31 +84,66 @@ function writeRows(sheetName, rows) {
   }
 
   if (nextValues.length) {
-    sheet.getRange(2, 1, nextValues.length, headers.length).setValues(nextValues);
+    sheet
+      .getRange(2, 1, nextValues.length, headers.length)
+      .setValues(nextValues);
   }
+}
+
+function getSheetData(sheetName) {
+  const sheet = getSheet(sheetName);
+  const values = sheet.getDataRange().getValues();
+  if (!values.length) return json([]);
+
+  const headers = values.shift();
+  const result = values
+    .filter((row) => row.join("") !== "")
+    .map((row) => {
+      const obj = {};
+      headers.forEach((h, i) => (obj[h] = row[i]));
+      return obj;
+    });
+
+  return json(result);
 }
 
 function addRow(sheetName, payload) {
   var sheet = getSheet(sheetName);
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var row = headers.map(function(header) {
-    return payload[header] !== undefined ? payload[header] : "";
+
+  // Auto-increment
+  var idColIndex = headers.indexOf("id");
+  var nextId = 1;
+
+  if (idColIndex !== -1) {
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      // Has data rows beyond the header
+      var idValues = sheet
+        .getRange(2, idColIndex + 1, lastRow - 1, 1)
+        .getValues();
+      var maxId = idValues.reduce(function (max, row) {
+        var val = Number(row[0]);
+        return !isNaN(val) && val > max ? val : max;
+      }, 0);
+      nextId = maxId + 1;
+    }
+  }
+
+  payload.id = nextId;
+
+  var row = headers.map(function (header) {
+    return payload[header] !== undefined
+      ? normaliseCellValue(header, payload[header])
+      : "";
   });
   sheet.appendRow(row);
   return { success: true, id: payload.id };
 }
 
-function deleteRow(sheetName, id) {
-  var rows = getRows(sheetName).filter(function(row) {
-    return String(row.id) !== String(id);
-  });
-  writeRows(sheetName, rows);
-  return { success: true, id: id };
-}
-
 function updateRow(sheetName, payload) {
   var rows = getRows(sheetName);
-  var index = rows.findIndex(function(row) {
+  var index = rows.findIndex(function (row) {
     return String(row.id) === String(payload.id);
   });
 
@@ -101,18 +157,182 @@ function updateRow(sheetName, payload) {
 }
 
 function deleteRow(sheetName, id) {
-  var rows = getRows(sheetName).filter(function(row) {
+  var rows = getRows(sheetName).filter(function (row) {
     return String(row.id) !== String(id);
   });
   writeRows(sheetName, rows);
   return { success: true, id: id };
 }
 
+function toNumber(value) {
+  var parsed = Number(value || 0);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+function getAccountRowsById() {
+  var rows = getRows("accounts");
+  var byId = {};
+
+  rows.forEach(function(row) {
+    byId[String(row.id)] = row;
+  });
+
+  return byId;
+}
+
+function getAccountBalance(accountRowsById, accountId) {
+  if (!accountId) {
+    return 0;
+  }
+
+  var account = accountRowsById[String(accountId)];
+  if (!account) {
+    throw new Error("Account not found for id " + accountId);
+  }
+
+  return toNumber(account.balance);
+}
+
+function applyTransactionEffectToBalances(balanceById, transaction, direction) {
+  var amount = toNumber(transaction.amount);
+  var multiplier = direction === "reverse" ? -1 : 1;
+  var type = String(transaction.type || "");
+
+  function applyDelta(accountId, delta) {
+    if (!accountId) {
+      return;
+    }
+
+    if (balanceById[String(accountId)] === undefined) {
+      throw new Error("Account not found for id " + accountId);
+    }
+
+    balanceById[String(accountId)] = toNumber(balanceById[String(accountId)]) + delta;
+  }
+
+  if (type === "income") {
+    applyDelta(transaction.account_id, amount * multiplier);
+  } else if (type === "expense") {
+    applyDelta(transaction.account_id, -amount * multiplier);
+  } else if (type === "transfer") {
+    applyDelta(transaction.account_id, -amount * multiplier);
+    applyDelta(transaction.transfer_account_id, amount * multiplier);
+  }
+}
+
+function validateSufficientFunds(transaction, previousTransaction) {
+  var type = String(transaction.type || "");
+
+  if (type !== "expense" && type !== "transfer") {
+    return;
+  }
+
+  var accountRowsById = getAccountRowsById();
+  var balanceById = {};
+
+  Object.keys(accountRowsById).forEach(function(accountId) {
+    balanceById[accountId] = toNumber(accountRowsById[accountId].balance);
+  });
+
+  if (previousTransaction) {
+    applyTransactionEffectToBalances(balanceById, previousTransaction, "reverse");
+  }
+
+  var sourceAccountId = String(transaction.account_id || "");
+  var sourceBalance = getAccountBalance(accountRowsById, sourceAccountId);
+  var effectiveSourceBalance =
+    balanceById[sourceAccountId] !== undefined
+      ? toNumber(balanceById[sourceAccountId])
+      : sourceBalance;
+
+  if (effectiveSourceBalance < toNumber(transaction.amount)) {
+    throw new Error("Insufficient account balance for this transaction.");
+  }
+}
+
+function updateAccountBalancesForTransaction(transaction, direction) {
+  var accountRows = getRows("accounts");
+  var amount = toNumber(transaction.amount);
+  var multiplier = direction === "reverse" ? -1 : 1;
+  var type = String(transaction.type || "");
+
+  function applyDelta(accountId, delta) {
+    if (!accountId) {
+      return;
+    }
+
+    var index = accountRows.findIndex(function (row) {
+      return String(row.id) === String(accountId);
+    });
+
+    if (index === -1) {
+      throw new Error("Account not found for id " + accountId);
+    }
+
+    accountRows[index].balance = toNumber(accountRows[index].balance) + delta;
+  }
+
+  if (type === "income") {
+    applyDelta(transaction.account_id, amount * multiplier);
+  } else if (type === "expense") {
+    applyDelta(transaction.account_id, -amount * multiplier);
+  } else if (type === "transfer") {
+    applyDelta(transaction.account_id, -amount * multiplier);
+    applyDelta(transaction.transfer_account_id, amount * multiplier);
+  }
+
+  writeRows("accounts", accountRows);
+}
+
+function addTransaction(payload) {
+  validateSufficientFunds(payload);
+  var result = addRow("transactions", payload);
+  var storedTransaction = Object.assign({}, payload, { id: result.id });
+  updateAccountBalancesForTransaction(storedTransaction, "apply");
+  return result;
+}
+
+function updateTransaction(payload) {
+  var previousTransaction = getRowById("transactions", payload.id);
+
+  if (!previousTransaction) {
+    throw new Error("Transaction not found for id " + payload.id);
+  }
+
+  validateSufficientFunds(payload, previousTransaction);
+  updateAccountBalancesForTransaction(previousTransaction, "reverse");
+  var result = updateRow("transactions", payload);
+  var nextTransaction = Object.assign({}, previousTransaction, payload);
+  updateAccountBalancesForTransaction(nextTransaction, "apply");
+  return result;
+}
+
+function deleteTransaction(id) {
+  var existingTransaction = getRowById("transactions", id);
+
+  if (!existingTransaction) {
+    throw new Error("Transaction not found for id " + id);
+  }
+
+  updateAccountBalancesForTransaction(existingTransaction, "reverse");
+  return deleteRow("transactions", id);
+}
+
 function getTransactions(user) {
   var rows = getRows("transactions");
   if (user) {
-    rows = rows.filter(function(row) {
+    rows = rows.filter(function (row) {
       return String(row.user) === String(user);
+    });
+  }
+  return rows;
+}
+
+function getAccount(account) {
+  var rows = getRows("accounts");
+  if (account) {
+    rows = rows.filter(function (row) {
+      return String(row.account) === String(account);
     });
   }
   return rows;
@@ -134,6 +354,15 @@ function doGet(e) {
     if (action === "getUsers") {
       return jsonResponse(getRows("users"));
     }
+    if (action === "getAccountTypes") {
+      return jsonResponse(getRows("account_type"));
+    }
+    if (action === "getAccounts") {
+      return jsonResponse(getRows("accounts"));
+    }
+    if (action === "getAccountById") {
+      return jsonResponse(getAccount(e.parameter.account));
+    }
 
     return jsonResponse({ error: "Invalid action" });
   } catch (error) {
@@ -148,13 +377,13 @@ function doPost(e) {
     var payload = data.payload || {};
 
     if (action === "addTransaction") {
-      return jsonResponse(addRow("transactions", payload));
+      return jsonResponse(addTransaction(payload));
     }
     if (action === "updateTransaction") {
-      return jsonResponse(updateRow("transactions", payload));
+      return jsonResponse(updateTransaction(payload));
     }
     if (action === "deleteTransaction") {
-      return jsonResponse(deleteRow("transactions", payload.id));
+      return jsonResponse(deleteTransaction(payload.id));
     }
     if (action === "addCategory") {
       return jsonResponse(addRow("categories", payload));
@@ -173,6 +402,15 @@ function doPost(e) {
     }
     if (action === "deleteTag") {
       return jsonResponse(deleteRow("tags", payload.id));
+    }
+    if (action === "addAccount") {
+      return jsonResponse(addRow("accounts", payload));
+    }
+    if (action === "updateAccount") {
+      return jsonResponse(updateRow("accounts", payload));
+    }
+    if (action === "deleteAccount") {
+      return jsonResponse(deleteRow("accounts", payload.id));
     }
 
     return jsonResponse({ error: "Invalid action" });

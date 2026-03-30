@@ -31,6 +31,26 @@ function normaliseUser(user) {
     };
 }
 
+function normaliseAccount(account) {
+    return {
+        ...account,
+        id: cleanValue(account.id),
+        name: cleanValue(account.name),
+        type: Number(cleanValue(account.type) || 0),
+        balance: Number(cleanValue(account.balance) || 0),
+        is_active: Number(cleanValue(account.is_active) || 0),
+        user: cleanValue(account.user)
+    };
+}
+
+function normaliseAccountType(accountType) {
+    return {
+        ...accountType,
+        id: Number(cleanValue(accountType.id) || 0),
+        name: String(cleanValue(accountType.name) || "")
+    };
+}
+
 /**
  * Loads all bootstrap data on mount and whenever selectedUser changes.
  * Also provides helpers to refresh individual collections and a shared delete handler.
@@ -40,6 +60,8 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
     const [categories, setCategories] = useState([]);
     const [tags, setTags] = useState([]);
     const [users, setUsers] = useState([]);
+    const [accounts, setAccounts] = useState([]);
+    const [accountTypes, setAccountTypes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -52,6 +74,8 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
                 setCategories(data.categories.map(normaliseCategory));
                 setTags(data.tags.map(normaliseTag));
                 setUsers(data.users.map(normaliseUser));
+                setAccounts(data.accounts.map(normaliseAccount));
+                setAccountTypes(data.accountTypes.map(normaliseAccountType));
             } catch (err) {
                 setError(err.message);
             } finally {
@@ -75,6 +99,10 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         setTags((await fetchData("getTags")).map(normaliseTag));
     }
 
+    async function refreshAccounts() {
+        setAccounts((await fetchData("getAccounts")).map(normaliseAccount));
+    }
+
     async function handleDelete(action, id) {
         setIsSaving(true);
         setError("");
@@ -82,14 +110,16 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
 
         try {
             await postData(action, { id });
-            const [nextTransactions, nextCategories, nextTags] = await Promise.all([
+            const [nextTransactions, nextCategories, nextTags, nextAccounts] = await Promise.all([
                 fetchData("getTransactions", selectedUser ? { user: selectedUser } : {}),
                 fetchData("getCategories"),
-                fetchData("getTags")
+                fetchData("getTags"),
+                fetchData("getAccounts")
             ]);
             setTransactions(nextTransactions.map(normaliseTransaction));
             setCategories(nextCategories.map(normaliseCategory));
             setTags(nextTags.map(normaliseTag));
+            setAccounts(nextAccounts.map(normaliseAccount));
             setMessage(`${id} deleted.`);
         } catch (err) {
             setError(err.message);
@@ -103,10 +133,13 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         categories,
         tags,
         users,
+        accounts,
+        accountTypes,
         isLoading,
         refreshTransactions,
         refreshCategories,
         refreshTags,
+        refreshAccounts,
         handleDelete
     };
 }

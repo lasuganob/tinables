@@ -1,9 +1,10 @@
 import { Alert } from "@mui/material";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
+import { formatMonthDay } from "../lib/format";
 
-export function LineChart({ data }) {
-  if (!data.length) {
+export function LineChart({ chartData }) {
+  if (!chartData.categories.length || !chartData.series.length) {
     return <Alert severity="info">No transactions yet.</Alert>;
   }
 
@@ -17,9 +18,7 @@ export function LineChart({ data }) {
       text: null
     },
     xAxis: {
-      categories: data.map((entry) =>
-        new Date(entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      )
+      categories: chartData.categories.map((entry) => formatMonthDay(entry))
     },
     yAxis: {
       title: {
@@ -33,18 +32,7 @@ export function LineChart({ data }) {
     credits: {
       enabled: false
     },
-    series: [
-      {
-        name: "Income",
-        data: data.map((entry) => entry.income),
-        color: "#059669"
-      },
-      {
-        name: "Expense",
-        data: data.map((entry) => entry.expense),
-        color: "#dc2626"
-      }
-    ]
+    series: chartData.series
   };
 
   return <HighchartsReact highcharts={Highcharts} options={options} />;

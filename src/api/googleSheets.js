@@ -97,13 +97,15 @@ export async function postData(action, payload) {
   }
 }
 
-export async function loadBootstrapData(user) {
-  const [transactions, categories, tags, users] = await Promise.all([
+export async function loadBootstrapData(user, account) {
+  const [transactions, categories, tags, users, accounts, accountTypes] = await Promise.all([
     fetchData("getTransactions", user ? { user } : {}),
     fetchData("getCategories"),
     fetchData("getTags"),
-    fetchData("getUsers")
+    fetchData("getUsers"),
+    fetchData("getAccounts", account ? { account } : {}),
+    fetchData("getAccountTypes")
   ]);
 
-  return { transactions, categories, tags, users };
+  return { transactions, categories, tags, users, accounts, accountTypes };
 }

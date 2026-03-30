@@ -1,8 +1,12 @@
+import { getTodayInAppTimeZone } from "../lib/format";
+
 export const emptyTransaction = {
     id: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: getTodayInAppTimeZone(),
     type: "expense",
     category_id: "",
+    account_id: "",
+    transfer_account_id: "",
     amount: "",
     note: "",
     tags: [],
@@ -19,3 +23,18 @@ export const emptyTag = {
     id: "",
     name: ""
 };
+
+export const emptyAccount = {
+    id: "",
+    name: "",
+    type: 1,
+    balance: "",
+    is_active: 1,
+    user: ""
+};
+
+export const fallbackAccountTypes = [
+    { id: 1, name: "cash" },
+    { id: 2, name: "e-wallet" },
+    { id: 3, name: "bank" }
+];

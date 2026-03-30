@@ -11,17 +11,20 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { TableSkeleton } from "../components/Skeletons";
+import { parseDateValue } from "../lib/format";
 
 export function RecentTransactionsSection({
     isViewLoading,
     formatDate,
     formatCurrency,
     categoryNameById,
+    accountNameById,
     tagNameById,
     transactionForm,
     setTransactionForm,
     isSaving,
     filteredCategories,
+    accounts,
     users,
     transactionFormTagIds,
     tags,
@@ -29,8 +32,7 @@ export function RecentTransactionsSection({
     resetTransactionForm,
     handleDelete,
     toPickerValue,
-    visibleTransactions,
-    maxId
+    visibleTransactions
 }) {
     const [showAllTransactions, setShowAllTransactions] = useState(false);
     const [transactionSort, setTransactionSort] = useState({ key: "date", direction: "desc" });
@@ -55,14 +57,14 @@ export function RecentTransactionsSection({
                     : Number(right.amount) - Number(left.amount);
             }
             return transactionSort.direction === "asc"
-                ? new Date(left.date) - new Date(right.date)
-                : new Date(right.date) - new Date(left.date);
+                ? parseDateValue(left.date) - parseDateValue(right.date)
+                : parseDateValue(right.date) - parseDateValue(left.date);
         });
         return items;
     }, [visibleTransactions, transactionSort, categoryNameById]);
 
     const latestTransactions = useMemo(
-        () => [...visibleTransactions].sort((left, right) => new Date(right.date) - new Date(left.date)).slice(0, 5),
+        () => [...visibleTransactions].sort((left, right) => parseDateValue(right.date) - parseDateValue(left.date)).slice(0, 5),
         [visibleTransactions]
     );
 
@@ -115,7 +117,7 @@ export function RecentTransactionsSection({
     }
 
     async function submitInlineTransaction() {
-        const saved = await handleTransactionSubmit(maxId + 1);
+        const saved = await handleTransactionSubmit();
         if (saved) {
             setShowInlineTransactionEditor(false);
         }
@@ -132,14 +134,39 @@ export function RecentTransactionsSection({
     }
 
     function renderInlineTransactionRow() {
+        const isTransfer = transactionForm.type === "transfer";
+        const accountOptions = [...accounts];
+        const selectedAccountIds = [
+            String(transactionForm.account_id || ""),
+            String(transactionForm.transfer_account_id || "")
+        ].filter(Boolean);
+
+        selectedAccountIds.forEach((selectedId) => {
+            const exists = accountOptions.some((account) => String(account.id) === selectedId);
+            if (!exists) {
+                accountOptions.push({
+                    id: selectedId,
+                    name: accountNameById.get(selectedId) || `Account ${selectedId}`
+                });
+            }
+        });
+
+        const accountOptionsWithUser = accountOptions.map((account) => {
+            return {
+                ...account,
+                userName: users.find((user) => String(user.id) === String(account.user))
+                    ?.name || ""
+            };
+        });
+
         return (
             <TableRow>
                 <TableCell colSpan={7}>
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, padding: 3 }}>
+                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, minmax(0, 1fr))" }, padding: 3 }}>
                         <DatePicker
                             label="Date"
                             value={toPickerValue(transactionForm.date)}
-                            onChange={(value) => setTransactionForm({ ...transactionForm, date: value ? value.format("MM/DD/YYYY") : "" })}
+                            onChange={(value) => setTransactionForm({ ...transactionForm, date: value ? value.format("YYYY-MM-DD") : "" })}
                             disabled={isSaving}
                             slotProps={{ textField: { fullWidth: true, required: true, size: "small" } }}
                         />
@@ -152,21 +179,53 @@ export function RecentTransactionsSection({
                             >
                                 <MenuItem value="expense">Expense</MenuItem>
                                 <MenuItem value="income">Income</MenuItem>
+                                <MenuItem value="transfer">Transfer</MenuItem>
                             </Select>
                         </FormControl>
                         <FormControl fullWidth size="small" disabled={isSaving}>
-                            <InputLabel>Category</InputLabel>
+                            <InputLabel>{isTransfer ? "From Account" : "Account"}</InputLabel>
                             <Select
-                                label="Category"
-                                value={String(transactionForm.category_id ?? "")}
-                                onChange={(event) => setTransactionForm({ ...transactionForm, category_id: event.target.value })}
+                                label={isTransfer ? "From Account" : "Account"}
+                                value={String(transactionForm.account_id ?? "")}
+                                onChange={(event) => setTransactionForm({ ...transactionForm, account_id: event.target.value })}
                             >
-                                <MenuItem value="">Select a category</MenuItem>
-                                {filteredCategories.map((category) => (
-                                    <MenuItem key={category.id} value={String(category.id)}>{category.name}</MenuItem>
+                                <MenuItem value="">Select an account</MenuItem>
+                                {accountOptionsWithUser.map((account) => (
+                                    <MenuItem key={account.id} value={String(account.id)}>{account.userName} - {account.name}</MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
+                        {isTransfer ? (
+                            <FormControl fullWidth size="small" disabled={isSaving}>
+                                <InputLabel>To Account</InputLabel>
+                                <Select
+                                    label="To Account"
+                                    value={String(transactionForm.transfer_account_id ?? "")}
+                                    onChange={(event) => setTransactionForm({ ...transactionForm, transfer_account_id: event.target.value })}
+                                >
+                                    <MenuItem value="">Select an account</MenuItem>
+                                    {accountOptions
+                                        .filter((account) => String(account.id) !== String(transactionForm.account_id))
+                                        .map((account) => (
+                                            <MenuItem key={account.id} value={String(account.id)}>{account.name}</MenuItem>
+                                        ))}
+                                </Select>
+                            </FormControl>
+                        ) : (
+                            <FormControl fullWidth size="small" disabled={isSaving}>
+                                <InputLabel>Category</InputLabel>
+                                <Select
+                                    label="Category"
+                                    value={String(transactionForm.category_id ?? "")}
+                                    onChange={(event) => setTransactionForm({ ...transactionForm, category_id: event.target.value })}
+                                >
+                                    <MenuItem value="">Select a category</MenuItem>
+                                    {filteredCategories.map((category) => (
+                                        <MenuItem key={category.id} value={String(category.id)}>{category.name}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        )}
                         <TextField
                             label="Amount"
                             type="number"
@@ -226,7 +285,14 @@ export function RecentTransactionsSection({
                             <Button
                                 variant="contained"
                                 onClick={submitInlineTransaction}
-                                disabled={isSaving || !transactionForm.date || !transactionForm.category_id || !transactionForm.amount}
+                                disabled={
+                                    isSaving
+                                    || !transactionForm.date
+                                    || !transactionForm.amount
+                                    || !transactionForm.account_id
+                                    || (!isTransfer && !transactionForm.category_id)
+                                    || (isTransfer && (!transactionForm.transfer_account_id || transactionForm.transfer_account_id === transactionForm.account_id))
+                                }
                             >
                                 {isSaving ? "Saving..." : transactionForm.id ? "Save" : "Add"}
                             </Button>
@@ -255,10 +321,13 @@ export function RecentTransactionsSection({
                 <TableRow key={transaction.id} hover>
                     <TableCell>{formatDate(transaction.date)}</TableCell>
                     <TableCell>
-                        {categoryNameById.get(String(transaction.category_id)) || "Unknown"}
+                        {transaction.type === "transfer"
+                            ? `Transfer: ${accountNameById.get(String(transaction.account_id)) || "Unknown"} -> ${accountNameById.get(String(transaction.transfer_account_id)) || "Unknown"}`
+                            : categoryNameById.get(String(transaction.category_id)) || "Unknown"}
                         {renderTagBadges(transaction.tags)}
                     </TableCell>
                     <TableCell>{formatCurrency(transaction.amount)}</TableCell>
+                    <TableCell>{accountNameById.get(String(transaction.account_id)) || "-"}</TableCell>
                     <TableCell>{transaction.user || "All"}</TableCell>
                     <TableCell>{transaction.note || "-"}</TableCell>
                     <TableCell align="right">
@@ -296,6 +365,7 @@ export function RecentTransactionsSection({
                                         <TableCell>Date</TableCell>
                                         <TableCell>Category/Tags</TableCell>
                                         <TableCell>Amount</TableCell>
+                                        <TableCell>Account</TableCell>
                                         <TableCell>User</TableCell>
                                         <TableCell>Notes</TableCell>
                                         <TableCell></TableCell>
@@ -347,6 +417,7 @@ export function RecentTransactionsSection({
                                                 Amount
                                             </TableSortLabel>
                                         </TableCell>
+                                        <TableCell>Account</TableCell>
                                         <TableCell>User</TableCell>
                                         <TableCell>Note</TableCell>
                                         <TableCell align="right">Actions</TableCell>
@@ -375,6 +446,7 @@ export function RecentTransactionsSection({
                         event.currentTarget.blur();
                         const transactionToEdit = activeTransaction;
                         closeTransactionMenu();
+                        setShowAllTransactions(false);
 
                         if (transactionToEdit) {
                             setTransactionForm(transactionToEdit);
