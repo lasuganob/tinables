@@ -1,11 +1,13 @@
 import { useMemo } from "react";
-import { Box, Button, Chip, Divider, FormControl, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, Divider, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
 import { useAppFiltersContext } from "../../context/AppFiltersContext";
 import { useAccountForm } from "../../hooks/useAccountForm";
 import { emptyAccount, fallbackAccountTypes } from "../../constants/defaults";
 import { SectionSkeleton } from "../../components/Skeletons";
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export function AccountsPage() {
     const { accounts, accountTypes, users, isLoading, refreshAccounts, handleDelete } = useAppDataContext();
@@ -50,7 +52,7 @@ export function AccountsPage() {
                 </Typography>
             </Stack>
 
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                 {isViewLoading ? (
                     <SectionSkeleton lines={6} />
                 ) : (
@@ -124,7 +126,7 @@ export function AccountsPage() {
 
                         <Stack spacing={1.25}>
                             {availableAccounts.map((account) => (
-                                <Paper key={account.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                                <Paper key={account.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ sm: "center" }}>
                                         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                                             <Typography fontWeight={600}>{account.name}</Typography>
@@ -134,12 +136,16 @@ export function AccountsPage() {
                                                 variant="outlined"
                                             />
                                             <Chip size="small" label={`PHP ${Number(account.balance || 0).toFixed(2)}`} color="secondary" variant="outlined" />
-                                            <Chip size="small" label={Number(account.is_active) === 1 ? "Active" : "Inactive"} variant="outlined" />
-                                            <Chip size="small" label={userNameById.get(String(account.user)) || "Unassigned"} variant="outlined" />
+                                            <Chip size="small" label={Number(account.is_active) === 1 ? "Active" : "Inactive"} variant="filled" color={Number(account.is_active) === 1 ? "info" : "error"} />
+                                            <Chip size="small" label={userNameById.get(String(account.user)) || "Unassigned"} variant="filled" color={account.user === 1 ? "warning" : "primary"} />
                                         </Stack>
                                         <Stack direction="row" spacing={1}>
-                                            <Button variant="outlined" size="small" onClick={() => setAccountForm({ ...account, user: account.user === "" ? "" : String(account.user) })}>Edit</Button>
-                                            <Button variant="outlined" color="error" size="small" onClick={() => handleDelete("deleteAccount", account.id)}>Delete</Button>
+                                            <IconButton aria-label="edit" size="small" onClick={() => setAccountForm({ ...account, user: account.user === "" ? "" : String(account.user) })}>
+                                                <EditIcon />
+                                            </IconButton>
+                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => handleDelete("deleteAccount", account.id)}>
+                                                <DeleteIcon />
+                                            </IconButton>
                                         </Stack>
                                     </Stack>
                                 </Paper>

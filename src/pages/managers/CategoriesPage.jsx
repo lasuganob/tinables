@@ -1,10 +1,12 @@
-import { Box, Button, Chip, Divider, FormControl, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, Divider, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
 import { useAppFiltersContext } from "../../context/AppFiltersContext";
 import { useCategoryForm } from "../../hooks/useCategoryForm";
 import { emptyCategory } from "../../constants/defaults";
 import { SectionSkeleton } from "../../components/Skeletons";
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export function CategoriesPage() {
     const { categories, isLoading, refreshCategories, handleDelete } = useAppDataContext();
@@ -28,7 +30,7 @@ export function CategoriesPage() {
                 </Typography>
             </Stack>
 
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                 {isViewLoading ? (
                     <SectionSkeleton lines={6} />
                 ) : (
@@ -62,15 +64,19 @@ export function CategoriesPage() {
 
                         <Stack spacing={1.25}>
                             {categories.map((category) => (
-                                <Paper key={category.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                                <Paper key={category.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ sm: "center" }}>
                                         <Stack direction="row" spacing={1} alignItems="center">
                                             <Typography fontWeight={600}>{category.name}</Typography>
-                                            <Chip size="small" label={category.type} variant="outlined" />
+                                            <Chip size="small" label={category.type} variant="filled" color={category.type === "expense" ? "error" : "success"} />
                                         </Stack>
                                         <Stack direction="row" spacing={1}>
-                                            <Button variant="outlined" size="small" onClick={() => setCategoryForm(category)}>Edit</Button>
-                                            <Button variant="outlined" color="error" size="small" onClick={() => handleDelete("deleteCategory", category.id)}>Delete</Button>
+                                            <IconButton aria-label="edit" size="small" onClick={() => setCategoryForm(category)}>
+                                                <EditIcon />
+                                            </IconButton>
+                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => handleDelete("deleteCategory", category.id)}>
+                                                <DeleteIcon />
+                                            </IconButton>
                                         </Stack>
                                     </Stack>
                                 </Paper>

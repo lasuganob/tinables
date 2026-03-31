@@ -210,7 +210,8 @@ export function RecentTransactionsSection({
                         <MenuItem value="">Select an account</MenuItem>
                         {accountOptionsWithUser.map((account) => (
                             <MenuItem key={account.id} value={String(account.id)}>
-                                {account.userName ? `${account.userName} - ${account.name}` : account.name}
+                                {account.name}
+                                <Chip color={account.user === 1 ? "warning" : "primary"} variant="filled" size="small" label={account.userName} sx={{ ml: 1 }} />
                             </MenuItem>
                         ))}
                     </Select>
@@ -228,7 +229,8 @@ export function RecentTransactionsSection({
                                 .filter((account) => String(account.id) !== String(transactionForm.account_id))
                                 .map((account) => (
                                     <MenuItem key={account.id} value={String(account.id)}>
-                                        {account.userName ? `${account.userName} - ${account.name}` : account.name}
+                                        {account.name}
+                                        <Chip color={account.user === 1 ? "warning" : "primary"} variant="filled" size="small" label={account.userName} sx={{ ml: 1 }} /> 
                                     </MenuItem>
                                 ))}
                         </Select>

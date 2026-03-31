@@ -1,4 +1,4 @@
-import { Box, Card, Dialog, DialogContent, DialogTitle, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
+import { Badge, Box, Card, Chip, Dialog, DialogContent, DialogTitle, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { StatCard } from "../components/StatCard";
 import { formatCurrency } from "../lib/format";
@@ -89,7 +89,12 @@ export function SummaryStatsSection({
                         <List disablePadding>
                             {incomeBreakdown.map((item) => (
                                 <ListItem key={item.id} disableGutters>
-                                    <ListItemText primary={"(" + getUsername(item.user) + ") " + item.name} />
+                                    <ListItemText primary={
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography variant="body2">{item.name}</Typography>
+                                            <Chip color={item.user === 1 ? "primary" : "secondary"} variant="filled" size="small" label={getUsername(item.user)} />
+                                        </Box>
+                                    } />
                                     <Typography fontWeight={600}>{formatCurrency(item.value)}</Typography>
                                 </ListItem>
                             ))}

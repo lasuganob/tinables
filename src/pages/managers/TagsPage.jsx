@@ -1,10 +1,12 @@
-import { Box, Button, Chip, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
 import { useAppFiltersContext } from "../../context/AppFiltersContext";
 import { useTagForm } from "../../hooks/useTagForm";
 import { emptyTag } from "../../constants/defaults";
 import { SectionSkeleton } from "../../components/Skeletons";
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export function TagsPage() {
     const { tags, isLoading, refreshTags, handleDelete } = useAppDataContext();
@@ -30,7 +32,7 @@ export function TagsPage() {
                 </Typography>
             </Stack>
 
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
+            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                 {isViewLoading ? (
                     <SectionSkeleton lines={6} />
                 ) : (
@@ -57,12 +59,16 @@ export function TagsPage() {
 
                         <Stack direction="row" spacing={1.25} useFlexGap flexWrap="wrap">
                             {tags.map((tag) => (
-                                <Paper key={tag.id} variant="outlined" sx={{ p: 1.25, minWidth: 180, borderRadius: 2 }}>
+                                <Paper key={tag.id} variant="outlined" sx={{ p: 1.25, minWidth: 180, borderRadius: 1 }}>
                                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                                        <Chip label={tag.name} color="secondary" variant="outlined" />
+                                        <Chip label={tag.name} variant="filled" />
                                         <Stack direction="row" spacing={0.5}>
-                                            <Button variant="text" size="small" onClick={() => setTagForm(tag)}>Edit</Button>
-                                            <Button variant="text" size="small" color="error" onClick={() => handleDelete("deleteTag", tag.id)}>Delete</Button>
+                                            <IconButton aria-label="edit" size="small" onClick={() => setTagForm(tag)}>
+                                                <EditIcon />
+                                            </IconButton>
+                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => handleDelete("deleteTag", tag.id)}>
+                                                <DeleteIcon />
+                                            </IconButton>
                                         </Stack>
                                     </Stack>
                                 </Paper>
