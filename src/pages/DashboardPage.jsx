@@ -177,10 +177,10 @@ export function DashboardPage() {
   return (
     <Stack spacing={3}>
       <Stack spacing={0.5}>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: "1.35rem", sm: "1.7rem" } }}>
           Dashboard
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: "0.85rem", sm: "0.875rem" } }}>
           Overview of your finances
         </Typography>
       </Stack>

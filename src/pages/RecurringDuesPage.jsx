@@ -29,10 +29,10 @@ export function RecurringDuesPage() {
   return (
     <Stack spacing={3}>
       <Stack spacing={0.5}>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: "1.35rem", sm: "1.7rem" } }}>
           Recurring Dues
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: "0.85rem", sm: "0.875rem" } }}>
           Manage recurring expenses and income on a predictable schedule.
         </Typography>
       </Stack>

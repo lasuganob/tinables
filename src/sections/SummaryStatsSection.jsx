@@ -24,8 +24,8 @@ export function SummaryStatsSection({
             <Box
                 sx={{
                     display: "grid",
-                    gap: 2,
-                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr", xl: "1.1fr 1fr 1fr 1.2fr" }
+                    gap: { xs: 1.25, sm: 2 },
+                    gridTemplateColumns: { xs: "1fr 1fr", lg: "1fr 1fr 1fr", xl: "1.1fr 1fr 1fr 1.2fr" }
                 }}>
                 {isViewLoading ? (
                     <>
@@ -45,10 +45,10 @@ export function SummaryStatsSection({
                         />
                         <StatCard label="Income" value={formatCurrency(incomeTotal)} tone="income" />
                         <StatCard label="Expenses" value={formatCurrency(expenseTotal)} tone="expense" />
-                        <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
-                            <Box sx={{ p: 2 }}>
-                                <Stack spacing={1.5}>
-                                    <Typography variant="overline" color="text.secondary" fontWeight={700}>
+                        <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", gridColumn: { xs: "1 / -1", xl: "auto" } }}>
+                            <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+                                <Stack spacing={{ xs: 1, sm: 1.5 }}>
+                                    <Typography variant="overline" color="text.secondary" fontWeight={700} sx={{ fontSize: { xs: "0.68rem", sm: "0.75rem" } }}>
                                         Top 3 Expense Categories
                                     </Typography>
                                     {topExpenseCategories.length ? (
@@ -61,10 +61,10 @@ export function SummaryStatsSection({
                                                     spacing={2}
                                                     alignItems="center"
                                                 >
-                                                    <Typography variant="body2" color="text.secondary">
+                                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}>
                                                         {index + 1}. {category.name}
                                                     </Typography>
-                                                    <Typography variant="body2" fontWeight={700}>
+                                                    <Typography variant="body2" fontWeight={700} sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}>
                                                         {formatCurrency(category.value)}
                                                     </Typography>
                                                 </Stack>

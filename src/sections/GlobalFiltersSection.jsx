@@ -14,13 +14,13 @@ export function GlobalFiltersSection({
     availableYears
 }) {
     return (
-        <Paper elevation={0} sx={{ p: 3, border: "1px solid", borderColor: "divider" }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2.5, md: 3 }, border: "1px solid", borderColor: "divider" }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: { xs: 1.5, sm: 2 } }}>
                 <FilterListRoundedIcon color="secondary" />
-                <Typography variant="h6">Global Filters</Typography>
+                <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>Global Filters</Typography>
             </Stack>
-            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr 1fr", md: "1.1fr 1fr 1fr 1fr auto" } }}>
-                <FormControl>
+            <Box sx={{ display: "grid", gap: { xs: 1.25, sm: 2 }, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1.1fr 1fr 1fr 1fr auto" } }}>
+                <FormControl fullWidth size="small">
                     <InputLabel>Spendee/Depositor</InputLabel>
                     <Select label="Spendee/Depositor" value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)}>
                         <MenuItem value="">All</MenuItem>
@@ -30,7 +30,7 @@ export function GlobalFiltersSection({
                     </Select>
                 </FormControl>
 
-                <FormControl fullWidth>
+                <FormControl fullWidth size="small">
                     <InputLabel>Filter type</InputLabel>
                     <Select
                         label="Filter type"
@@ -50,7 +50,7 @@ export function GlobalFiltersSection({
                         views={["year", "month"]}
                         value={toPickerValue(dateFilter.month ? `${dateFilter.month}-01` : "")}
                         onChange={(value) => updateDateFilter("month", value ? value.format("YYYY-MM") : "")}
-                        slotProps={{ textField: { fullWidth: true } }}
+                        slotProps={{ textField: { fullWidth: true, size: "small" } }}
                     />
                 ) : null}
 
@@ -61,7 +61,7 @@ export function GlobalFiltersSection({
                         value={toPickerValue(dateFilter.year ? `${dateFilter.year}-01-01` : "")}
                         onChange={(value) => updateDateFilter("year", value ? value.format("YYYY") : "")}
                         slotProps={{
-                            textField: { fullWidth: true, select: false }
+                            textField: { fullWidth: true, select: false, size: "small" }
                         }}
                     />
                 ) : null}
@@ -72,19 +72,19 @@ export function GlobalFiltersSection({
                             label="Start date"
                             value={toPickerValue(dateFilter.startDate)}
                             onChange={(value) => updateDateFilter("startDate", value ? value.format("YYYY-MM-DD") : "")}
-                            slotProps={{ textField: { fullWidth: true } }}
+                            slotProps={{ textField: { fullWidth: true, size: "small" } }}
                         />
                         <DatePicker
                             label="End date"
                             value={toPickerValue(dateFilter.endDate)}
                             onChange={(value) => updateDateFilter("endDate", value ? value.format("YYYY-MM-DD") : "")}
-                            slotProps={{ textField: { fullWidth: true } }}
+                            slotProps={{ textField: { fullWidth: true, size: "small" } }}
                         />
                     </>
                 ) : null}
 
                 {dateFilter.mode === "year" ? (
-                    <FormControl fullWidth>
+                    <FormControl fullWidth size="small">
                         <InputLabel>Quick year</InputLabel>
                         <Select label="Quick year" value={dateFilter.year} onChange={(event) => updateDateFilter("year", event.target.value)}>
                             <MenuItem value="">Select year</MenuItem>
@@ -97,10 +97,12 @@ export function GlobalFiltersSection({
 
                 <Button
                     variant="outlined"
+                    size="small"
                     onClick={() => {
                         setSelectedUser("");
                         setDateFilter({ mode: "month", month: getCurrentMonthInAppTimeZone(), year: "", startDate: "", endDate: "" })
                     }}
+                    sx={{ minHeight: 40 }}
                 >
                     Clear Filter
                 </Button>

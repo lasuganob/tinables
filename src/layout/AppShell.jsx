@@ -136,7 +136,7 @@ export function AppShell() {
         ) : null}
 
         {/* Page content */}
-        <Box sx={{ flex: 1, p: { xs: 2, md: 3 } }}>
+        <Box sx={{ flex: 1, p: { xs: 1.25, sm: 2, md: 3 } }}>
           <Outlet />
         </Box>
       </Box>
