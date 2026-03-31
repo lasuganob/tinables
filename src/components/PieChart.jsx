@@ -27,9 +27,9 @@ export function PieChart({ data }) {
         allowPointSelect: true,
         cursor: "pointer",
         dataLabels: {
-          enabled: true,
-          format: "{point.name}: {point.percentage:.1f}%"
-        }
+          enabled: false
+        },
+        showInLegend: true
       }
     },
     series: [

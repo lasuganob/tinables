@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import {
-    Box, Button, Chip, Dialog, DialogContent, DialogTitle, FormControl,
+    Box, Button, Chip, FormControl,
     IconButton, InputLabel, ListItemIcon, ListItemText, Menu, MenuItem,
     OutlinedInput, Paper, Select, Skeleton, Stack, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography
+    TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Typography,
+    useMediaQuery, useTheme
 } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
@@ -34,12 +35,24 @@ export function RecentTransactionsSection({
     toPickerValue,
     visibleTransactions
 }) {
-    const [showAllTransactions, setShowAllTransactions] = useState(false);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(15);
     const [transactionSort, setTransactionSort] = useState({ key: "date", direction: "desc" });
     const [transactionMenuAnchor, setTransactionMenuAnchor] = useState(null);
     const [activeTransaction, setActiveTransaction] = useState(null);
     const [showInlineTransactionEditor, setShowInlineTransactionEditor] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState("");
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
 
     const sortedTransactions = useMemo(() => {
         const items = [...visibleTransactions];
@@ -63,10 +76,10 @@ export function RecentTransactionsSection({
         return items;
     }, [visibleTransactions, transactionSort, categoryNameById]);
 
-    const latestTransactions = useMemo(
-        () => [...visibleTransactions].sort((left, right) => parseDateValue(right.date) - parseDateValue(left.date)).slice(0, 5),
-        [visibleTransactions]
-    );
+    const paginatedTransactions = useMemo(() => {
+        const start = page * rowsPerPage;
+        return sortedTransactions.slice(start, start + rowsPerPage);
+    }, [sortedTransactions, page, rowsPerPage]);
 
     function toggleTransactionSort(key) {
         setTransactionSort((current) => {
@@ -133,8 +146,7 @@ export function RecentTransactionsSection({
         setShowInlineTransactionEditor(false);
     }
 
-    function renderInlineTransactionRow() {
-        const isTransfer = transactionForm.type === "transfer";
+    function getAccountOptions() {
         const accountOptions = [...accounts];
         const selectedAccountIds = [
             String(transactionForm.account_id || ""),
@@ -151,158 +163,173 @@ export function RecentTransactionsSection({
             }
         });
 
-        const accountOptionsWithUser = accountOptions.map((account) => {
-            return {
-                ...account,
-                userName: users.find((user) => String(user.id) === String(account.user))
-                    ?.name || ""
-            };
-        });
+        return accountOptions.map((account) => ({
+            ...account,
+            userName: users.find((user) => String(user.id) === String(account.user))?.name || ""
+        }));
+    }
+
+    function renderTransactionEditor() {
+        const isTransfer = transactionForm.type === "transfer";
+        const accountOptionsWithUser = getAccountOptions();
 
         return (
-            <TableRow>
-                <TableCell colSpan={7}>
-                    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, minmax(0, 1fr))" }, padding: 3 }}>
-                        <DatePicker
-                            label="Date"
-                            value={toPickerValue(transactionForm.date)}
-                            onChange={(value) => setTransactionForm({ ...transactionForm, date: value ? value.format("YYYY-MM-DD") : "" })}
-                            disabled={isSaving}
-                            slotProps={{ textField: { fullWidth: true, required: true, size: "small" } }}
-                        />
-                        <FormControl fullWidth size="small" disabled={isSaving}>
-                            <InputLabel>Type</InputLabel>
-                            <Select
-                                label="Type"
-                                value={transactionForm.type}
-                                onChange={(event) => setTransactionForm({ ...transactionForm, type: event.target.value, category_id: "" })}
-                            >
-                                <MenuItem value="expense">Expense</MenuItem>
-                                <MenuItem value="income">Income</MenuItem>
-                                <MenuItem value="transfer">Transfer</MenuItem>
-                            </Select>
-                        </FormControl>
-                        <FormControl fullWidth size="small" disabled={isSaving}>
-                            <InputLabel>{isTransfer ? "From Account" : "Account"}</InputLabel>
-                            <Select
-                                label={isTransfer ? "From Account" : "Account"}
-                                value={String(transactionForm.account_id ?? "")}
-                                onChange={(event) => setTransactionForm({ ...transactionForm, account_id: event.target.value })}
-                            >
-                                <MenuItem value="">Select an account</MenuItem>
-                                {accountOptionsWithUser.map((account) => (
-                                    <MenuItem key={account.id} value={String(account.id)}>{account.userName} - {account.name}</MenuItem>
+            <Box
+                sx={{
+                    display: "grid",
+                    gap: { xs: 1.25, sm: 1.5, md: 2 },
+                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4, minmax(0, 1fr))" }
+                }}
+            >
+                <DatePicker
+                    label="Date"
+                    value={toPickerValue(transactionForm.date)}
+                    onChange={(value) => setTransactionForm({ ...transactionForm, date: value ? value.format("YYYY-MM-DD") : "" })}
+                    disabled={isSaving}
+                    slotProps={{ textField: { fullWidth: true, required: true, size: "small" } }}
+                />
+                <FormControl fullWidth size="small" disabled={isSaving}>
+                    <InputLabel>Type</InputLabel>
+                    <Select
+                        label="Type"
+                        value={transactionForm.type}
+                        onChange={(event) => setTransactionForm({ ...transactionForm, type: event.target.value, category_id: "" })}
+                    >
+                        <MenuItem value="expense">Expense</MenuItem>
+                        <MenuItem value="income">Income</MenuItem>
+                        <MenuItem value="transfer">Transfer</MenuItem>
+                    </Select>
+                </FormControl>
+                <FormControl fullWidth size="small" disabled={isSaving}>
+                    <InputLabel>{isTransfer ? "From Account" : "Account"}</InputLabel>
+                    <Select
+                        label={isTransfer ? "From Account" : "Account"}
+                        value={String(transactionForm.account_id ?? "")}
+                        onChange={(event) => setTransactionForm({ ...transactionForm, account_id: event.target.value })}
+                    >
+                        <MenuItem value="">Select an account</MenuItem>
+                        {accountOptionsWithUser.map((account) => (
+                            <MenuItem key={account.id} value={String(account.id)}>
+                                {account.name}
+                                <Chip color={account.user === 1 ? "warning" : "primary"} variant="filled" size="small" label={account.userName} sx={{ ml: 1 }} />
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                {isTransfer ? (
+                    <FormControl fullWidth size="small" disabled={isSaving}>
+                        <InputLabel>To Account</InputLabel>
+                        <Select
+                            label="To Account"
+                            value={String(transactionForm.transfer_account_id ?? "")}
+                            onChange={(event) => setTransactionForm({ ...transactionForm, transfer_account_id: event.target.value })}
+                        >
+                            <MenuItem value="">Select an account</MenuItem>
+                            {accountOptionsWithUser
+                                .filter((account) => String(account.id) !== String(transactionForm.account_id))
+                                .map((account) => (
+                                    <MenuItem key={account.id} value={String(account.id)}>
+                                        {account.name}
+                                        <Chip color={account.user === 1 ? "warning" : "primary"} variant="filled" size="small" label={account.userName} sx={{ ml: 1 }} /> 
+                                    </MenuItem>
                                 ))}
-                            </Select>
-                        </FormControl>
-                        {isTransfer ? (
-                            <FormControl fullWidth size="small" disabled={isSaving}>
-                                <InputLabel>To Account</InputLabel>
-                                <Select
-                                    label="To Account"
-                                    value={String(transactionForm.transfer_account_id ?? "")}
-                                    onChange={(event) => setTransactionForm({ ...transactionForm, transfer_account_id: event.target.value })}
-                                >
-                                    <MenuItem value="">Select an account</MenuItem>
-                                    {accountOptions
-                                        .filter((account) => String(account.id) !== String(transactionForm.account_id))
-                                        .map((account) => (
-                                            <MenuItem key={account.id} value={String(account.id)}>{account.name}</MenuItem>
-                                        ))}
-                                </Select>
-                            </FormControl>
-                        ) : (
-                            <FormControl fullWidth size="small" disabled={isSaving}>
-                                <InputLabel>Category</InputLabel>
-                                <Select
-                                    label="Category"
-                                    value={String(transactionForm.category_id ?? "")}
-                                    onChange={(event) => setTransactionForm({ ...transactionForm, category_id: event.target.value })}
-                                >
-                                    <MenuItem value="">Select a category</MenuItem>
-                                    {filteredCategories.map((category) => (
-                                        <MenuItem key={category.id} value={String(category.id)}>{category.name}</MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                        </Select>
+                    </FormControl>
+                ) : (
+                    <FormControl fullWidth size="small" disabled={isSaving}>
+                        <InputLabel>Category</InputLabel>
+                        <Select
+                            label="Category"
+                            value={String(transactionForm.category_id ?? "")}
+                            onChange={(event) => setTransactionForm({ ...transactionForm, category_id: event.target.value })}
+                        >
+                            <MenuItem value="">Select a category</MenuItem>
+                            {filteredCategories.map((category) => (
+                                <MenuItem key={category.id} value={String(category.id)}>{category.name}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                )}
+                <TextField
+                    label="Amount"
+                    type="number"
+                    size="small"
+                    inputProps={{ min: 0, step: "0.01" }}
+                    value={transactionForm.amount}
+                    onChange={(event) => setTransactionForm({ ...transactionForm, amount: event.target.value })}
+                    disabled={isSaving}
+                    required
+                    fullWidth
+                />
+                <FormControl fullWidth size="small" disabled={isSaving}>
+                    <InputLabel>User</InputLabel>
+                    <Select
+                        label="User"
+                        value={transactionForm.user}
+                        onChange={(event) => setTransactionForm({ ...transactionForm, user: event.target.value })}
+                    >
+                        <MenuItem value="">All</MenuItem>
+                        {users.map((user) => (
+                            <MenuItem key={user.id} value={user.name}>{user.name}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <FormControl fullWidth size="small" disabled={isSaving}>
+                    <InputLabel>Tags</InputLabel>
+                    <Select
+                        multiple
+                        value={transactionFormTagIds}
+                        onChange={(event) => setTransactionForm({ ...transactionForm, tags: event.target.value })}
+                        input={<OutlinedInput label="Tags" />}
+                        renderValue={(selected) => (
+                            <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                                {selected.map((value) => (
+                                    <Chip key={value} label={tagNameById.get(String(value)) || String(value)} size="small" />
+                                ))}
+                            </Box>
                         )}
-                        <TextField
-                            label="Amount"
-                            type="number"
-                            size="small"
-                            inputProps={{ min: 0, step: "0.01" }}
-                            value={transactionForm.amount}
-                            onChange={(event) => setTransactionForm({ ...transactionForm, amount: event.target.value })}
-                            disabled={isSaving}
-                            required
-                            fullWidth
-                        />
-                        <FormControl fullWidth size="small" disabled={isSaving}>
-                            <InputLabel>User</InputLabel>
-                            <Select
-                                label="User"
-                                value={transactionForm.user}
-                                onChange={(event) => setTransactionForm({ ...transactionForm, user: event.target.value })}
-                            >
-                                <MenuItem value="">All</MenuItem>
-                                {users.map((user) => (
-                                    <MenuItem key={user.id} value={user.name}>{user.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        <FormControl fullWidth size="small" disabled={isSaving}>
-                            <InputLabel>Tags</InputLabel>
-                            <Select
-                                multiple
-                                value={transactionFormTagIds}
-                                onChange={(event) => setTransactionForm({ ...transactionForm, tags: event.target.value })}
-                                input={<OutlinedInput label="Tags" />}
-                                renderValue={(selected) => (
-                                    <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-                                        {selected.map((value) => (
-                                            <Chip key={value} label={tagNameById.get(String(value)) || String(value)} size="small" />
-                                        ))}
-                                    </Box>
-                                )}
-                            >
-                                {tags.map((tag) => (
-                                    <MenuItem key={tag.id} value={String(tag.id)}>{tag.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        <TextField
-                            label="Note"
-                            multiline
-                            minRows={2}
-                            fullWidth
-                            size="small"
-                            disabled={isSaving}
-                            value={transactionForm.note}
-                            onChange={(event) => setTransactionForm({ ...transactionForm, note: event.target.value })}
-                            sx={{ gridColumn: { md: "1 / -1" } }}
-                        />
-                        <Stack direction="row" spacing={1.5} sx={{ gridColumn: { md: "1 / -1" } }}>
-                            <Button
-                                variant="contained"
-                                onClick={submitInlineTransaction}
-                                disabled={
-                                    isSaving
-                                    || !transactionForm.date
-                                    || !transactionForm.amount
-                                    || !transactionForm.account_id
-                                    || (!isTransfer && !transactionForm.category_id)
-                                    || (isTransfer && (!transactionForm.transfer_account_id || transactionForm.transfer_account_id === transactionForm.account_id))
-                                }
-                            >
-                                {isSaving ? "Saving..." : transactionForm.id ? "Save" : "Add"}
-                            </Button>
-                            <Button variant="outlined" onClick={cancelInlineTransaction} disabled={isSaving}>
-                                Cancel
-                            </Button>
-                        </Stack>
-                    </Box>
-                </TableCell>
-            </TableRow>
+                    >
+                        {tags.map((tag) => (
+                            <MenuItem key={tag.id} value={String(tag.id)}>{tag.name}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <TextField
+                    label="Note"
+                    multiline
+                    minRows={isMobile ? 3 : 2}
+                    fullWidth
+                    size="small"
+                    disabled={isSaving}
+                    value={transactionForm.note}
+                    onChange={(event) => setTransactionForm({ ...transactionForm, note: event.target.value })}
+                    sx={{ gridColumn: { md: "1 / -1" } }}
+                />
+                <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.25}
+                    sx={{ gridColumn: { md: "1 / -1" } }}
+                >
+                    <Button
+                        variant="contained"
+                        onClick={submitInlineTransaction}
+                        disabled={
+                            isSaving
+                            || !transactionForm.date
+                            || !transactionForm.amount
+                            || !transactionForm.account_id
+                            || (!isTransfer && !transactionForm.category_id)
+                            || (isTransfer && (!transactionForm.transfer_account_id || transactionForm.transfer_account_id === transactionForm.account_id))
+                        }
+                        fullWidth={isMobile}
+                    >
+                        {isSaving ? "Saving..." : transactionForm.id ? "Save Entry" : "Add Entry"}
+                    </Button>
+                    <Button variant="outlined" onClick={cancelInlineTransaction} disabled={isSaving} fullWidth={isMobile}>
+                        Cancel
+                    </Button>
+                </Stack>
+            </Box>
         );
     }
 
@@ -340,101 +367,216 @@ export function RecentTransactionsSection({
         ));
     }
 
+    function renderMobileTransactionCards(items) {
+        if (!items.length) {
+            return (
+                <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2, textAlign: "center" }}>
+                    <Typography variant="body2" color="text.secondary">No transactions found.</Typography>
+                </Paper>
+            );
+        }
+
+        return (
+            <Stack spacing={1.25}>
+                {items.map((transaction) => (
+                    String(transaction.id) === deletingTransactionId ? (
+                        <Paper key={transaction.id} elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2 }}>
+                            <Stack spacing={1}>
+                                <Skeleton width="45%" />
+                                <Skeleton />
+                                <Skeleton width="60%" />
+                            </Stack>
+                        </Paper>
+                    ) : (
+                        <Paper key={transaction.id} elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 1.5 }}>
+                            <Stack spacing={1.25}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                                    <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {formatDate(transaction.date)}
+                                        </Typography>
+                                        <Typography variant="body2" fontWeight={700}>
+                                            {transaction.type === "transfer"
+                                                ? `Transfer: ${accountNameById.get(String(transaction.account_id)) || "Unknown"} -> ${accountNameById.get(String(transaction.transfer_account_id)) || "Unknown"}`
+                                                : categoryNameById.get(String(transaction.category_id)) || "Unknown"}
+                                        </Typography>
+                                    </Stack>
+                                    <IconButton
+                                        size="small"
+                                        onClick={(event) => openTransactionMenu(event, transaction)}
+                                        aria-label="Open transaction actions"
+                                        sx={{ mt: -0.5, mr: -0.5 }}
+                                    >
+                                        <MoreVertRoundedIcon fontSize="small" />
+                                    </IconButton>
+                                </Stack>
+
+                                {transaction.tags?.length ? renderTagBadges(transaction.tags) : null}
+
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {accountNameById.get(String(transaction.account_id)) || "-"}
+                                    </Typography>
+                                    <Typography variant="subtitle2" fontWeight={800}>
+                                        {formatCurrency(transaction.amount)}
+                                    </Typography>
+                                </Stack>
+
+                                <Stack direction="row" justifyContent="space-between" spacing={1}>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {transaction.user || "All"}
+                                    </Typography>
+                                    {transaction.note ? (
+                                        <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                            sx={{ textAlign: "right", maxWidth: "60%" }}
+                                        >
+                                            {transaction.note}
+                                        </Typography>
+                                    ) : null}
+                                </Stack>
+                            </Stack>
+                        </Paper>
+                    )
+                ))}
+            </Stack>
+        );
+    }
+
     return (
         <>
-            <Paper elevation={0} sx={{ p: 3, border: "1px solid", borderColor: "divider" }}>
-                <Stack direction="row" spacing={1.5} justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                    <Typography variant="h6">Recent transactions</Typography>
+            <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2, md: 3 }, border: "1px solid", borderColor: "divider" }}>
+                <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.25}
+                    justifyContent="space-between"
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    sx={{ mb: { xs: 1.5, sm: 2 } }}
+                >
+                    <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>Transactions</Typography>
                     <Button
                         variant="contained"
                         startIcon={<AddRoundedIcon />}
                         onClick={openNewTransactionRow}
                         disabled={showInlineTransactionEditor}
+                        fullWidth={isMobile}
                     >
                         Add Entry
                     </Button>
                 </Stack>
+
+                {showInlineTransactionEditor ? (
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            mb: 2,
+                            p: { xs: 1.25, sm: 1.5, md: 2 },
+                            border: "1px solid",
+                            borderColor: "divider",
+                            backgroundColor: "rgba(15,118,110,0.02)"
+                        }}
+                    >
+                        <Stack spacing={1.25}>
+                            <Typography variant="subtitle2" fontWeight={700}>
+                                {transactionForm.id ? "Edit transaction" : "New transaction"}
+                            </Typography>
+                            {renderTransactionEditor()}
+                        </Stack>
+                    </Paper>
+                ) : null}
+
                 {isViewLoading ? (
-                    <TableSkeleton rows={5} columns={7} />
+                    isMobile ? (
+                        <Stack spacing={1.25}>
+                            {Array.from({ length: 4 }).map((_, index) => (
+                                <Paper key={index} elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2 }}>
+                                    <Stack spacing={1}>
+                                        <Skeleton width="45%" />
+                                        <Skeleton />
+                                        <Skeleton width="60%" />
+                                    </Stack>
+                                </Paper>
+                            ))}
+                        </Stack>
+                    ) : (
+                        <TableSkeleton rows={rowsPerPage} columns={7} />
+                    )
                 ) : (
                     <>
-                        <TableContainer>
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Date</TableCell>
-                                        <TableCell>Category/Tags</TableCell>
-                                        <TableCell>Amount</TableCell>
-                                        <TableCell>Account</TableCell>
-                                        <TableCell>User</TableCell>
-                                        <TableCell>Notes</TableCell>
-                                        <TableCell></TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {showInlineTransactionEditor ? renderInlineTransactionRow() : null}
-                                    {latestTransactions.length ? renderTransactionTableRows(latestTransactions) : (
+                        {isMobile ? (
+                            renderMobileTransactionCards(paginatedTransactions)
+                        ) : (
+                            <TableContainer>
+                                <Table size="small">
+                                    <TableHead>
                                         <TableRow>
-                                            <TableCell colSpan={7} align="center">No transactions found.</TableCell>
+                                            <TableCell sortDirection={transactionSort.key === "date" ? transactionSort.direction : false}>
+                                                <TableSortLabel
+                                                    active={transactionSort.key === "date"}
+                                                    direction={transactionSort.key === "date" ? transactionSort.direction : "desc"}
+                                                    onClick={() => toggleTransactionSort("date")}
+                                                >
+                                                    Date
+                                                </TableSortLabel>
+                                            </TableCell>
+                                            <TableCell sortDirection={transactionSort.key === "category" ? transactionSort.direction : false}>
+                                                <TableSortLabel
+                                                    active={transactionSort.key === "category"}
+                                                    direction={transactionSort.key === "category" ? transactionSort.direction : "asc"}
+                                                    onClick={() => toggleTransactionSort("category")}
+                                                >
+                                                    Category/Tags
+                                                </TableSortLabel>
+                                            </TableCell>
+                                            <TableCell sortDirection={transactionSort.key === "amount" ? transactionSort.direction : false}>
+                                                <TableSortLabel
+                                                    active={transactionSort.key === "amount"}
+                                                    direction={transactionSort.key === "amount" ? transactionSort.direction : "asc"}
+                                                    onClick={() => toggleTransactionSort("amount")}
+                                                >
+                                                    Amount
+                                                </TableSortLabel>
+                                            </TableCell>
+                                            <TableCell>Account</TableCell>
+                                            <TableCell>User</TableCell>
+                                            <TableCell>Note</TableCell>
+                                            <TableCell align="right">Actions</TableCell>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-                            <Button variant="outlined" onClick={() => setShowAllTransactions(true)}>Show All</Button>
-                        </Stack>
+                                    </TableHead>
+                                    <TableBody>
+                                        {paginatedTransactions.length ? renderTransactionTableRows(paginatedTransactions) : (
+                                            <TableRow>
+                                                <TableCell colSpan={7} align="center">No transactions found.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
+                        <TablePagination
+                            rowsPerPageOptions={isMobile ? [5, 10, 15] : [5, 15, 25, 50]}
+                            component="div"
+                            count={sortedTransactions.length}
+                            rowsPerPage={rowsPerPage}
+                            page={page}
+                            onPageChange={handleChangePage}
+                            onRowsPerPageChange={handleChangeRowsPerPage}
+                            sx={{
+                                mt: 1,
+                                ".MuiTablePagination-toolbar": {
+                                    px: { xs: 0, sm: 2 },
+                                    minHeight: { xs: 52, sm: 56 },
+                                    flexWrap: "wrap"
+                                },
+                                ".MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows": {
+                                    fontSize: { xs: "0.75rem", sm: "0.875rem" }
+                                }
+                            }}
+                        />
                     </>
                 )}
             </Paper>
-
-            <Dialog open={showAllTransactions} onClose={() => setShowAllTransactions(false)} fullWidth maxWidth="xl">
-                <DialogTitle>All Transactions</DialogTitle>
-                <DialogContent dividers>
-                    {isViewLoading ? (
-                        <TableSkeleton rows={8} columns={8} />
-                    ) : (
-                        <TableContainer>
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Date</TableCell>
-                                        <TableCell sortDirection={transactionSort.key === "category" ? transactionSort.direction : false}>
-                                            <TableSortLabel
-                                                active={transactionSort.key === "category"}
-                                                direction={transactionSort.key === "category" ? transactionSort.direction : "asc"}
-                                                onClick={() => toggleTransactionSort("category")}
-                                            >
-                                                Category/Tags
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell sortDirection={transactionSort.key === "amount" ? transactionSort.direction : false}>
-                                            <TableSortLabel
-                                                active={transactionSort.key === "amount"}
-                                                direction={transactionSort.key === "amount" ? transactionSort.direction : "asc"}
-                                                onClick={() => toggleTransactionSort("amount")}
-                                            >
-                                                Amount
-                                            </TableSortLabel>
-                                        </TableCell>
-                                        <TableCell>Account</TableCell>
-                                        <TableCell>User</TableCell>
-                                        <TableCell>Note</TableCell>
-                                        <TableCell align="right">Actions</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {sortedTransactions.length ? renderTransactionTableRows(sortedTransactions, { showNotes: true }) : (
-                                        <TableRow>
-                                            <TableCell colSpan={8} align="center">No transactions found.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    )}
-                </DialogContent>
-            </Dialog>
 
             <Menu
                 anchorEl={transactionMenuAnchor}
@@ -446,7 +588,6 @@ export function RecentTransactionsSection({
                         event.currentTarget.blur();
                         const transactionToEdit = activeTransaction;
                         closeTransactionMenu();
-                        setShowAllTransactions(false);
 
                         if (transactionToEdit) {
                             setTransactionForm(transactionToEdit);
