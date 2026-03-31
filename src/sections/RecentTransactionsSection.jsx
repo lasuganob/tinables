@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import {
-    Box, Button, Chip, Dialog, DialogContent, DialogTitle, FormControl,
+    Box, Button, Chip, FormControl,
     IconButton, InputLabel, ListItemIcon, ListItemText, Menu, MenuItem,
     OutlinedInput, Paper, Select, Skeleton, Stack, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography
+    TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Typography
 } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
@@ -34,12 +34,22 @@ export function RecentTransactionsSection({
     toPickerValue,
     visibleTransactions
 }) {
-    const [showAllTransactions, setShowAllTransactions] = useState(false);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(15);
     const [transactionSort, setTransactionSort] = useState({ key: "date", direction: "desc" });
     const [transactionMenuAnchor, setTransactionMenuAnchor] = useState(null);
     const [activeTransaction, setActiveTransaction] = useState(null);
     const [showInlineTransactionEditor, setShowInlineTransactionEditor] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState("");
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
 
     const sortedTransactions = useMemo(() => {
         const items = [...visibleTransactions];
@@ -63,10 +73,10 @@ export function RecentTransactionsSection({
         return items;
     }, [visibleTransactions, transactionSort, categoryNameById]);
 
-    const latestTransactions = useMemo(
-        () => [...visibleTransactions].sort((left, right) => parseDateValue(right.date) - parseDateValue(left.date)).slice(0, 5),
-        [visibleTransactions]
-    );
+    const paginatedTransactions = useMemo(() => {
+        const start = page * rowsPerPage;
+        return sortedTransactions.slice(start, start + rowsPerPage);
+    }, [sortedTransactions, page, rowsPerPage]);
 
     function toggleTransactionSort(key) {
         setTransactionSort((current) => {
@@ -344,7 +354,7 @@ export function RecentTransactionsSection({
         <>
             <Paper elevation={0} sx={{ p: 3, border: "1px solid", borderColor: "divider" }}>
                 <Stack direction="row" spacing={1.5} justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                    <Typography variant="h6">Recent transactions</Typography>
+                    <Typography variant="h6">Transactions</Typography>
                     <Button
                         variant="contained"
                         startIcon={<AddRoundedIcon />}
@@ -355,50 +365,22 @@ export function RecentTransactionsSection({
                     </Button>
                 </Stack>
                 {isViewLoading ? (
-                    <TableSkeleton rows={5} columns={7} />
+                    <TableSkeleton rows={rowsPerPage} columns={7} />
                 ) : (
                     <>
                         <TableContainer>
                             <Table size="small">
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Date</TableCell>
-                                        <TableCell>Category/Tags</TableCell>
-                                        <TableCell>Amount</TableCell>
-                                        <TableCell>Account</TableCell>
-                                        <TableCell>User</TableCell>
-                                        <TableCell>Notes</TableCell>
-                                        <TableCell></TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {showInlineTransactionEditor ? renderInlineTransactionRow() : null}
-                                    {latestTransactions.length ? renderTransactionTableRows(latestTransactions) : (
-                                        <TableRow>
-                                            <TableCell colSpan={7} align="center">No transactions found.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-                            <Button variant="outlined" onClick={() => setShowAllTransactions(true)}>Show All</Button>
-                        </Stack>
-                    </>
-                )}
-            </Paper>
-
-            <Dialog open={showAllTransactions} onClose={() => setShowAllTransactions(false)} fullWidth maxWidth="xl">
-                <DialogTitle>All Transactions</DialogTitle>
-                <DialogContent dividers>
-                    {isViewLoading ? (
-                        <TableSkeleton rows={8} columns={8} />
-                    ) : (
-                        <TableContainer>
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Date</TableCell>
+                                        <TableCell sortDirection={transactionSort.key === "date" ? transactionSort.direction : false}>
+                                            <TableSortLabel
+                                                active={transactionSort.key === "date"}
+                                                direction={transactionSort.key === "date" ? transactionSort.direction : "desc"}
+                                                onClick={() => toggleTransactionSort("date")}
+                                            >
+                                                Date
+                                            </TableSortLabel>
+                                        </TableCell>
                                         <TableCell sortDirection={transactionSort.key === "category" ? transactionSort.direction : false}>
                                             <TableSortLabel
                                                 active={transactionSort.key === "category"}
@@ -424,17 +406,27 @@ export function RecentTransactionsSection({
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {sortedTransactions.length ? renderTransactionTableRows(sortedTransactions, { showNotes: true }) : (
+                                    {showInlineTransactionEditor ? renderInlineTransactionRow() : null}
+                                    {paginatedTransactions.length ? renderTransactionTableRows(paginatedTransactions) : (
                                         <TableRow>
-                                            <TableCell colSpan={8} align="center">No transactions found.</TableCell>
+                                            <TableCell colSpan={7} align="center">No transactions found.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
                             </Table>
                         </TableContainer>
-                    )}
-                </DialogContent>
-            </Dialog>
+                        <TablePagination
+                            rowsPerPageOptions={[5, 15, 25, 50]}
+                            component="div"
+                            count={sortedTransactions.length}
+                            rowsPerPage={rowsPerPage}
+                            page={page}
+                            onPageChange={handleChangePage}
+                            onRowsPerPageChange={handleChangeRowsPerPage}
+                        />
+                    </>
+                )}
+            </Paper>
 
             <Menu
                 anchorEl={transactionMenuAnchor}
@@ -446,7 +438,6 @@ export function RecentTransactionsSection({
                         event.currentTarget.blur();
                         const transactionToEdit = activeTransaction;
                         closeTransactionMenu();
-                        setShowAllTransactions(false);
 
                         if (transactionToEdit) {
                             setTransactionForm(transactionToEdit);

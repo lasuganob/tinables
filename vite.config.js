@@ -18,20 +18,43 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg"],
+      includeAssets: [
+        "icon.svg",
+        "pwa-192x192.png",
+        "pwa-512x512.png",
+        "apple-touch-icon.png"
+      ],
+      workbox: {
+        navigateFallback: "/index.html",
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,json}"]
+      },
       manifest: {
+        id: "/",
         name: "Tinables Cashflow",
         short_name: "Tinables",
         description: "Cashflow tracking PWA backed by Google Sheets and Apps Script.",
-        theme_color: "#1d4ed8",
-        background_color: "#f3efe6",
+        theme_color: "#0f766e",
+        background_color: "#f4f7fb",
         display: "standalone",
+        orientation: "portrait-primary",
+        scope: "/",
         start_url: "/",
         icons: [
           {
-            src: "/icon.svg",
+            src: "/pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png"
+          },
+          {
+            src: "/pwa-512x512.png",
             sizes: "512x512",
-            type: "image/svg+xml",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
             purpose: "any maskable"
           }
         ]
