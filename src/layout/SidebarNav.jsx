@@ -9,9 +9,6 @@ import {
   ListItemIcon,
   ListItemText,
   Toolbar,
-  Typography,
-  useTheme,
-  useMediaQuery,
   Collapse,
 } from "@mui/material";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
@@ -44,7 +41,6 @@ const NAV_ITEMS = [
 ];
 
 export function SidebarNav({ mobileOpen, onMobileClose }) {
-  const theme = useTheme();
   const location = useLocation();
   const [managersOpen, setManagersOpen] = useState(false);
 
@@ -54,17 +50,17 @@ export function SidebarNav({ mobileOpen, onMobileClose }) {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: "linear-gradient(160deg, #0f766e 0%, #134e4a 100%)",
+        backgroundColor: "#4a6555",
         color: "#fff",
       }}
     >
-      <Toolbar sx={{ px: 2.5, pt: 2.5, pb: 1.5, flexDirection: "column", alignItems: "flex-start" }}>
-        <Typography variant="subtitle2" sx={{ color: "rgba(255,255,255,0.55)", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", mb: 0.25 }}>
-          Cashflow
-        </Typography>
-        <Typography variant="h6" fontWeight={800} sx={{ color: "#fff", lineHeight: 1.2, fontSize: "1.05rem" }}>
-          Tinables
-        </Typography>
+      <Toolbar sx={{ px: 2.5, pt: 2.5, pb: 1.5 }}>
+        <Box
+          component="img"
+          src="/logo-nav.png"
+          alt="Tinables"
+          sx={{ width: "100%", maxWidth: 144, height: "auto", display: "block", margin: "auto" }}
+        />
       </Toolbar>
 
       <Box sx={{ flex: 1, overflowY: "auto", px: 1.5, pb: 2 }}>

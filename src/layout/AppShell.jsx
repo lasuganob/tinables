@@ -65,7 +65,7 @@ export function AppShell() {
             position="sticky"
             elevation={0}
             sx={{
-              background: "linear-gradient(90deg, #0f766e 0%, #134e4a 100%)",
+              backgroundColor: "#4a6555",
               borderBottom: "1px solid rgba(255,255,255,0.1)",
             }}
           >
@@ -78,9 +78,21 @@ export function AppShell() {
               >
                 <MenuRoundedIcon />
               </IconButton>
-              <Typography variant="h6" fontWeight={700} sx={{ flexGrow: 1 }}>
-                Tinables Cashflow
-              </Typography>
+              <Box
+                sx={{
+                  flexGrow: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  minWidth: 0,
+                }}
+              >
+                <Box
+                  component="img"
+                  src="/logo-nav.png"
+                  alt="Tinables"
+                  sx={{ height: 34, width: "auto", display: "block", margin: "auto" }}
+                />
+              </Box>
             </Toolbar>
           </AppBar>
         )}
