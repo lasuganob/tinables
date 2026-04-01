@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Box, Button, Chip, Divider, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
@@ -18,8 +18,6 @@ export function CategoriesPage() {
 
     const isViewLoading = isLoading || isFilterLoading;
     const [pendingDeleteCategory, setPendingDeleteCategory] = useState(null);
-
-    const formRef = useRef(null);
 
     const { categoryForm, setCategoryForm, handleCategorySubmit } =
         useCategoryForm({ saveCategoryLocally, ...feedback });
@@ -43,7 +41,7 @@ export function CategoriesPage() {
                 </Typography>
             </Stack>
 
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }} ref={formRef}>
+            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                 {isViewLoading ? (
                     <SectionSkeleton lines={6} />
                 ) : (
@@ -86,7 +84,7 @@ export function CategoriesPage() {
                                         <Stack direction="row" spacing={1}>
                                             <IconButton aria-label="edit" size="small" onClick={() => {
                                                 setCategoryForm(category);
-                                                formRef.current?.scrollIntoView({ behavior: "smooth" });
+                                                window.scrollTo({ top: 0, behavior: "smooth" });
                                             }}>
                                                 <EditIcon />
                                             </IconButton>

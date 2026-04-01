@@ -1,4 +1,4 @@
-import { Badge, Box, Card, Chip, Dialog, DialogContent, DialogTitle, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
+import { Box, Card, Chip, Dialog, DialogContent, DialogTitle, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { StatCard } from "../components/StatCard";
 import { formatCurrency } from "../lib/format";
@@ -42,9 +42,20 @@ export function SummaryStatsSection({
                             tone="income"
                             actionLabel="View breakdown"
                             onAction={() => setShowIncomeBreakdown(true)}
+                            storageKey="dashboard-accounts-summary-visible"
                         />
-                        <StatCard label="Income" value={formatCurrency(incomeTotal)} tone="income" />
-                        <StatCard label="Expenses" value={formatCurrency(expenseTotal)} tone="expense" />
+                        <StatCard
+                            label="Income"
+                            value={formatCurrency(incomeTotal)}
+                            tone="income"
+                            storageKey="dashboard-income-visible"
+                        />
+                        <StatCard
+                            label="Expenses"
+                            value={formatCurrency(expenseTotal)}
+                            tone="expense"
+                            storageKey="dashboard-expenses-visible"
+                        />
                         <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", gridColumn: { xs: "1 / -1", xl: "auto" } }}>
                             <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
                                 <Stack spacing={{ xs: 1, sm: 1.5 }}>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import {
   Alert,
@@ -22,7 +22,6 @@ export function AppShell() {
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== "undefined" ? !navigator.onLine : false,
   );
-  const feedbackRef = useRef(null);
 
   const { error, setError, message, setMessage } = useAppFeedbackContext();
 
@@ -49,9 +48,9 @@ export function AppShell() {
       return;
     }
 
-    feedbackRef.current?.scrollIntoView({
+    window.scrollTo({
+      top: 0,
       behavior: "smooth",
-      block: "start",
     });
   }, [error, message]);
 
@@ -111,7 +110,7 @@ export function AppShell() {
 
         {/* Feedback banners */}
         {error || message ? (
-          <Box ref={feedbackRef}>
+          <Box>
             {error ? (
               <Alert
                 variant="outlined"

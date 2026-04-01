@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Box, Button, Chip, Divider, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
@@ -18,8 +18,6 @@ export function AccountsPage() {
 
     const isViewLoading = isLoading || isFilterLoading;
     const [pendingDeleteAccount, setPendingDeleteAccount] = useState(null);
-
-    const formRef = useRef(null);
 
     const { accountForm, setAccountForm, handleAccountSubmit } = useAccountForm({
         saveAccountLocally,
@@ -63,7 +61,7 @@ export function AccountsPage() {
                 </Typography>
             </Stack>
 
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }} ref={formRef}>
+            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                 {isViewLoading ? (
                     <SectionSkeleton lines={6} />
                 ) : (
@@ -160,7 +158,7 @@ export function AccountsPage() {
                                         <Stack direction="row" spacing={1}>
                                             <IconButton aria-label="edit" size="small" onClick={() => {
                                                 setAccountForm({ ...account, user: account.user === "" ? "" : String(account.user) });
-                                                formRef.current?.scrollIntoView({ behavior: "smooth" });
+                                                window.scrollTo({ top: 0, behavior: "smooth" });
                                             }}>
                                                 <EditIcon />
                                             </IconButton>

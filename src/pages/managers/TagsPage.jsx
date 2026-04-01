@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Box, Button, Chip, Divider, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
@@ -18,8 +18,6 @@ export function TagsPage() {
 
     const isViewLoading = isLoading || isFilterLoading;
     const [pendingDeleteTag, setPendingDeleteTag] = useState(null);
-
-    const formRef = useRef(null);
 
     const { tagForm, setTagForm, handleTagSubmit } = useTagForm({
         saveTagLocally,
@@ -45,7 +43,7 @@ export function TagsPage() {
                 </Typography>
             </Stack>
 
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }} ref={formRef}>
+            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                 {isViewLoading ? (
                     <SectionSkeleton lines={6} />
                 ) : (
@@ -78,7 +76,7 @@ export function TagsPage() {
                                         <Stack direction="row" spacing={0.5}>
                                             <IconButton aria-label="edit" size="small" onClick={() => {
                                                 setTagForm(tag);
-                                                formRef.current?.scrollIntoView({ behavior: "smooth" });
+                                                window.scrollTo({ top: 0, behavior: "smooth" });
                                             }}>
                                                 <EditIcon />
                                             </IconButton>
