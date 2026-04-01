@@ -79,7 +79,7 @@ npm run build
 
 Create a Google Sheet with the following tabs and exact header columns:
 
-- **`transactions`**: `id, date, type, category_id, amount, note, tags, user, account_id, transfer_account_id`
+- **`transactions`**: `id, date, type, category_id, amount, transfer_fee, note, tags, user, account_id, transfer_account_id`
 - **`categories`**: `id, name, type`
 - **`tags`**: `id, name`
 - **`users`**: `id, name`

@@ -69,6 +69,7 @@ function removeById(items, id) {
 
 function applyTransactionToAccounts(accounts, transaction, direction) {
     const amount = Number(transaction.amount || 0);
+    const transferFee = Number(transaction.transfer_fee || 0);
     const multiplier = direction === "reverse" ? -1 : 1;
     const sourceAccountId = String(transaction.account_id || "");
     const transferAccountId = String(transaction.transfer_account_id || "");
@@ -83,7 +84,7 @@ function applyTransactionToAccounts(accounts, transaction, direction) {
             nextBalance -= amount * multiplier;
         } else if (transaction.type === "transfer") {
             if (accountId === sourceAccountId) {
-                nextBalance -= amount * multiplier;
+                nextBalance -= (amount + transferFee) * multiplier;
             }
             if (accountId === transferAccountId) {
                 nextBalance += amount * multiplier;
@@ -206,8 +207,10 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
             }
 
             setMessage(`${id} deleted.`);
+            return true;
         } catch (err) {
             setError(err.message);
+            return false;
         } finally {
             setIsSaving(false);
         }

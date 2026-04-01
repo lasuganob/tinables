@@ -180,6 +180,121 @@ function getAccountRowsById() {
   return byId;
 }
 
+function findTransactionsReferencingAccount(accountId) {
+  return getRows("transactions").filter(function(row) {
+    return (
+      String(row.account_id || "") === String(accountId) ||
+      String(row.transfer_account_id || "") === String(accountId)
+    );
+  });
+}
+
+function findTransactionsReferencingCategory(categoryId) {
+  return getRows("transactions").filter(function(row) {
+    return String(row.category_id || "") === String(categoryId);
+  });
+}
+
+function parseTransactionTags(value) {
+  if (Array.isArray(value)) {
+    return value.map(function(tag) {
+      return String(tag).trim();
+    }).filter(Boolean);
+  }
+
+  return String(value || "")
+    .split(",")
+    .map(function(tag) {
+      return tag.trim();
+    })
+    .filter(Boolean);
+}
+
+function findTransactionsReferencingTag(tagId) {
+  return getRows("transactions").filter(function(row) {
+    return parseTransactionTags(row.tags).some(function(tag) {
+      return String(tag) === String(tagId);
+    });
+  });
+}
+
+function validateTransactionAccountsActive(transaction, previousTransaction) {
+  var accountRowsById = getAccountRowsById();
+
+  function validateAccount(accountId, fieldName) {
+    var normalizedId = String(accountId || "");
+
+    if (!normalizedId) {
+      return;
+    }
+
+    var account = accountRowsById[normalizedId];
+
+    if (!account) {
+      throw new Error("Account not found for id " + normalizedId);
+    }
+
+    if (Number(account.is_active) === 1) {
+      return;
+    }
+
+    var previousAccountId = previousTransaction
+      ? String(previousTransaction[fieldName] || "")
+      : "";
+
+    if (previousAccountId === normalizedId) {
+      return;
+    }
+
+    throw new Error(
+      'Inactive accounts cannot be used for new transactions. Please choose an active account.'
+    );
+  }
+
+  validateAccount(transaction.account_id, "account_id");
+  validateAccount(transaction.transfer_account_id, "transfer_account_id");
+}
+
+function validateAccountDeletion(id) {
+  var account = getRowById("accounts", id);
+
+  if (!account) {
+    throw new Error("Account not found for id " + id);
+  }
+
+  if (toNumber(account.balance) !== 0) {
+    throw new Error("Account can only be deleted when its balance is 0.");
+  }
+
+  if (findTransactionsReferencingAccount(id).length) {
+    throw new Error("Account cannot be deleted because it is referenced by transactions. Deactivate it instead.");
+  }
+}
+
+function validateCategoryDeletion(id) {
+  var category = getRowById("categories", id);
+
+  if (!category) {
+    throw new Error("Category not found for id " + id);
+  }
+
+  if (findTransactionsReferencingCategory(id).length) {
+    throw new Error("Category cannot be deleted because it is used by transactions.");
+  }
+}
+
+function validateTagDeletion(id) {
+  var tag = getRowById("tags", id);
+
+  if (!tag) {
+    throw new Error("Tag not found for id " + id);
+  }
+
+  if (findTransactionsReferencingTag(id).length) {
+    throw new Error("Tag cannot be deleted because it is used by transactions.");
+  }
+}
+
 function getAccountBalance(accountRowsById, accountId) {
   if (!accountId) {
     return 0;
@@ -195,6 +310,7 @@ function getAccountBalance(accountRowsById, accountId) {
 
 function applyTransactionEffectToBalances(balanceById, transaction, direction) {
   var amount = toNumber(transaction.amount);
+  var transferFee = toNumber(transaction.transfer_fee);
   var multiplier = direction === "reverse" ? -1 : 1;
   var type = String(transaction.type || "");
 
@@ -215,7 +331,7 @@ function applyTransactionEffectToBalances(balanceById, transaction, direction) {
   } else if (type === "expense") {
     applyDelta(transaction.account_id, -amount * multiplier);
   } else if (type === "transfer") {
-    applyDelta(transaction.account_id, -amount * multiplier);
+    applyDelta(transaction.account_id, -(amount + transferFee) * multiplier);
     applyDelta(transaction.transfer_account_id, amount * multiplier);
   }
 }
@@ -245,7 +361,12 @@ function validateSufficientFunds(transaction, previousTransaction) {
       ? toNumber(balanceById[sourceAccountId])
       : sourceBalance;
 
-  if (effectiveSourceBalance < toNumber(transaction.amount)) {
+  var requiredAmount =
+    type === "transfer"
+      ? toNumber(transaction.amount) + toNumber(transaction.transfer_fee)
+      : toNumber(transaction.amount);
+
+  if (effectiveSourceBalance < requiredAmount) {
     throw new Error("Insufficient account balance for this transaction.");
   }
 }
@@ -253,6 +374,7 @@ function validateSufficientFunds(transaction, previousTransaction) {
 function updateAccountBalancesForTransaction(transaction, direction) {
   var accountRows = getRows("accounts");
   var amount = toNumber(transaction.amount);
+  var transferFee = toNumber(transaction.transfer_fee);
   var multiplier = direction === "reverse" ? -1 : 1;
   var type = String(transaction.type || "");
 
@@ -277,7 +399,7 @@ function updateAccountBalancesForTransaction(transaction, direction) {
   } else if (type === "expense") {
     applyDelta(transaction.account_id, -amount * multiplier);
   } else if (type === "transfer") {
-    applyDelta(transaction.account_id, -amount * multiplier);
+    applyDelta(transaction.account_id, -(amount + transferFee) * multiplier);
     applyDelta(transaction.transfer_account_id, amount * multiplier);
   }
 
@@ -285,6 +407,7 @@ function updateAccountBalancesForTransaction(transaction, direction) {
 }
 
 function addTransaction(payload) {
+  validateTransactionAccountsActive(payload, null);
   validateSufficientFunds(payload);
   var result = addRow("transactions", payload);
   var storedTransaction = Object.assign({}, payload, { id: result.id });
@@ -299,6 +422,7 @@ function updateTransaction(payload) {
     throw new Error("Transaction not found for id " + payload.id);
   }
 
+  validateTransactionAccountsActive(payload, previousTransaction);
   validateSufficientFunds(payload, previousTransaction);
   updateAccountBalancesForTransaction(previousTransaction, "reverse");
   var result = updateRow("transactions", payload);
@@ -392,6 +516,7 @@ function doPost(e) {
       return jsonResponse(updateRow("categories", payload));
     }
     if (action === "deleteCategory") {
+      validateCategoryDeletion(payload.id);
       return jsonResponse(deleteRow("categories", payload.id));
     }
     if (action === "addTag") {
@@ -401,6 +526,7 @@ function doPost(e) {
       return jsonResponse(updateRow("tags", payload));
     }
     if (action === "deleteTag") {
+      validateTagDeletion(payload.id);
       return jsonResponse(deleteRow("tags", payload.id));
     }
     if (action === "addAccount") {
@@ -410,6 +536,7 @@ function doPost(e) {
       return jsonResponse(updateRow("accounts", payload));
     }
     if (action === "deleteAccount") {
+      validateAccountDeletion(payload.id);
       return jsonResponse(deleteRow("accounts", payload.id));
     }
 

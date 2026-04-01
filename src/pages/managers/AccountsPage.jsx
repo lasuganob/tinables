@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Box, Button, Chip, Divider, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
@@ -6,6 +6,7 @@ import { useAppFiltersContext } from "../../context/AppFiltersContext";
 import { useAccountForm } from "../../hooks/useAccountForm";
 import { emptyAccount, fallbackAccountTypes } from "../../constants/defaults";
 import { SectionSkeleton } from "../../components/Skeletons";
+import { ConfirmDeleteDialog } from "../../components/ConfirmDeleteDialog";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -16,11 +17,22 @@ export function AccountsPage() {
     const feedback = { setError, setMessage, setIsSaving };
 
     const isViewLoading = isLoading || isFilterLoading;
+    const [pendingDeleteAccount, setPendingDeleteAccount] = useState(null);
+
+    const formRef = useRef(null);
 
     const { accountForm, setAccountForm, handleAccountSubmit } = useAccountForm({
         saveAccountLocally,
         ...feedback,
     });
+
+    async function confirmDeleteAccount() {
+        if (!pendingDeleteAccount) return;
+        const deleted = await handleDelete("deleteAccount", pendingDeleteAccount.id);
+        if (deleted) {
+            setPendingDeleteAccount(null);
+        }
+    }
 
     const accountTypeOptions = useMemo(
         () => (accountTypes.length ? accountTypes : fallbackAccountTypes),
@@ -51,7 +63,7 @@ export function AccountsPage() {
                 </Typography>
             </Stack>
 
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
+            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }} ref={formRef}>
                 {isViewLoading ? (
                     <SectionSkeleton lines={6} />
                 ) : (
@@ -146,10 +158,13 @@ export function AccountsPage() {
                                         </Stack>
 
                                         <Stack direction="row" spacing={1}>
-                                            <IconButton aria-label="edit" size="small" onClick={() => setAccountForm({ ...account, user: account.user === "" ? "" : String(account.user) })}>
+                                            <IconButton aria-label="edit" size="small" onClick={() => {
+                                                setAccountForm({ ...account, user: account.user === "" ? "" : String(account.user) });
+                                                formRef.current?.scrollIntoView({ behavior: "smooth" });
+                                            }}>
                                                 <EditIcon />
                                             </IconButton>
-                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => handleDelete("deleteAccount", account.id)}>
+                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => setPendingDeleteAccount(account)}>
                                                 <DeleteIcon />
                                             </IconButton>
                                         </Stack>
@@ -160,6 +175,19 @@ export function AccountsPage() {
                     </Stack>
                 )}
             </Paper>
+
+            <ConfirmDeleteDialog
+                open={Boolean(pendingDeleteAccount)}
+                title="Delete account?"
+                message={
+                    pendingDeleteAccount
+                        ? `Delete "${pendingDeleteAccount.name}"? This is only allowed when the account is no longer referenced by transactions and its balance is 0.`
+                        : ""
+                }
+                isSaving={isSaving}
+                onCancel={() => setPendingDeleteAccount(null)}
+                onConfirm={confirmDeleteAccount}
+            />
         </Stack>
     );
 }

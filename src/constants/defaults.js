@@ -7,6 +7,7 @@ export const emptyTransaction = {
     category_id: "",
     account_id: "",
     transfer_account_id: "",
+    transfer_fee: "",
     amount: "",
     note: "",
     tags: [],

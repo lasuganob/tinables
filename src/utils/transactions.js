@@ -7,6 +7,7 @@ export function normaliseTransaction(item) {
     return {
         ...item,
         amount: Number(item.amount || 0),
+        transfer_fee: Number(item.transfer_fee || 0),
         account_id: item.account_id ? String(item.account_id) : "",
         transfer_account_id: item.transfer_account_id ? String(item.transfer_account_id) : "",
         tags: Array.isArray(item.tags)

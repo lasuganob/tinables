@@ -226,24 +226,36 @@ export function RecentTransactionsSection({
                     </Select>
                 </FormControl>
                 {isTransfer ? (
-                    <FormControl fullWidth size="small" disabled={isSaving}>
-                        <InputLabel>To Account</InputLabel>
-                        <Select
-                            label="To Account"
-                            value={String(transactionForm.transfer_account_id ?? "")}
-                            onChange={(event) => setTransactionForm({ ...transactionForm, transfer_account_id: event.target.value })}
-                        >
-                            <MenuItem value="">Select an account</MenuItem>
-                            {accountOptionsWithUser
-                                .filter((account) => String(account.id) !== String(transactionForm.account_id))
-                                .map((account) => (
-                                    <MenuItem key={account.id} value={String(account.id)}>
-                                        {account.name}
-                                        <Chip color={account.user === 1 ? "warning" : "primary"} variant="filled" size="small" label={account.userName} sx={{ ml: 1 }} /> 
-                                    </MenuItem>
-                                ))}
-                        </Select>
-                    </FormControl>
+                    <>
+                        <FormControl fullWidth size="small" disabled={isSaving}>
+                            <InputLabel>To Account</InputLabel>
+                            <Select
+                                label="To Account"
+                                value={String(transactionForm.transfer_account_id ?? "")}
+                                onChange={(event) => setTransactionForm({ ...transactionForm, transfer_account_id: event.target.value })}
+                            >
+                                <MenuItem value="">Select an account</MenuItem>
+                                {accountOptionsWithUser
+                                    .filter((account) => String(account.id) !== String(transactionForm.account_id))
+                                    .map((account) => (
+                                        <MenuItem key={account.id} value={String(account.id)}>
+                                            {account.name}
+                                            <Chip color={account.user === 1 ? "warning" : "primary"} variant="filled" size="small" label={account.userName} sx={{ ml: 1 }} /> 
+                                        </MenuItem>
+                                    ))}
+                            </Select>
+                        </FormControl>
+                        <TextField
+                            label="Transfer Fee"
+                            type="number"
+                            size="small"
+                            inputProps={{ min: 0, step: "0.01" }}
+                            value={transactionForm.transfer_fee}
+                            onChange={(event) => setTransactionForm({ ...transactionForm, transfer_fee: event.target.value })}
+                            disabled={isSaving}
+                            fullWidth
+                        />
+                    </>
                 ) : (
                     <FormControl fullWidth size="small" disabled={isSaving}>
                         <InputLabel>Category</InputLabel>
@@ -360,6 +372,11 @@ export function RecentTransactionsSection({
                         {transaction.type === "transfer"
                             ? `Transfer: ${accountNameById.get(String(transaction.account_id)) || "Unknown"} -> ${accountNameById.get(String(transaction.transfer_account_id)) || "Unknown"}`
                             : categoryNameById.get(String(transaction.category_id)) || "Unknown"}
+                        {transaction.type === "transfer" && Number(transaction.transfer_fee || 0) > 0 ? (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                                Fee: {formatCurrency(transaction.transfer_fee)}
+                            </Typography>
+                        ) : null}
                         {renderTagBadges(transaction.tags)}
                     </TableCell>
                     <TableCell>{formatCurrency(transaction.amount)}</TableCell>
@@ -409,6 +426,11 @@ export function RecentTransactionsSection({
                                                 ? `Transfer: ${accountNameById.get(String(transaction.account_id)) || "Unknown"} -> ${accountNameById.get(String(transaction.transfer_account_id)) || "Unknown"}`
                                                 : categoryNameById.get(String(transaction.category_id)) || "Unknown"}
                                         </Typography>
+                                        {transaction.type === "transfer" && Number(transaction.transfer_fee || 0) > 0 ? (
+                                            <Typography variant="caption" color="text.secondary">
+                                                Fee: {formatCurrency(transaction.transfer_fee)}
+                                            </Typography>
+                                        ) : null}
                                     </Stack>
                                     <IconButton
                                         size="small"

@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Box, Button, Chip, Divider, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
@@ -5,6 +6,7 @@ import { useAppFiltersContext } from "../../context/AppFiltersContext";
 import { useCategoryForm } from "../../hooks/useCategoryForm";
 import { emptyCategory } from "../../constants/defaults";
 import { SectionSkeleton } from "../../components/Skeletons";
+import { ConfirmDeleteDialog } from "../../components/ConfirmDeleteDialog";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -15,9 +17,20 @@ export function CategoriesPage() {
     const feedback = { setError, setMessage, setIsSaving };
 
     const isViewLoading = isLoading || isFilterLoading;
+    const [pendingDeleteCategory, setPendingDeleteCategory] = useState(null);
+
+    const formRef = useRef(null);
 
     const { categoryForm, setCategoryForm, handleCategorySubmit } =
         useCategoryForm({ saveCategoryLocally, ...feedback });
+
+    async function confirmDeleteCategory() {
+        if (!pendingDeleteCategory) return;
+        const deleted = await handleDelete("deleteCategory", pendingDeleteCategory.id);
+        if (deleted) {
+            setPendingDeleteCategory(null);
+        }
+    }
 
     return (
         <Stack spacing={3}>
@@ -30,7 +43,7 @@ export function CategoriesPage() {
                 </Typography>
             </Stack>
 
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
+            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 1 }} ref={formRef}>
                 {isViewLoading ? (
                     <SectionSkeleton lines={6} />
                 ) : (
@@ -71,10 +84,13 @@ export function CategoriesPage() {
                                             <Chip size="small" label={category.type} variant="filled" color={category.type === "expense" ? "error" : "success"} />
                                         </Stack>
                                         <Stack direction="row" spacing={1}>
-                                            <IconButton aria-label="edit" size="small" onClick={() => setCategoryForm(category)}>
+                                            <IconButton aria-label="edit" size="small" onClick={() => {
+                                                setCategoryForm(category);
+                                                formRef.current?.scrollIntoView({ behavior: "smooth" });
+                                            }}>
                                                 <EditIcon />
                                             </IconButton>
-                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => handleDelete("deleteCategory", category.id)}>
+                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => setPendingDeleteCategory(category)}>
                                                 <DeleteIcon />
                                             </IconButton>
                                         </Stack>
@@ -85,6 +101,19 @@ export function CategoriesPage() {
                     </Stack>
                 )}
             </Paper>
+
+            <ConfirmDeleteDialog
+                open={Boolean(pendingDeleteCategory)}
+                title="Delete category?"
+                message={
+                    pendingDeleteCategory
+                        ? `Delete "${pendingDeleteCategory.name}"? This is only allowed when no transactions use this category.`
+                        : ""
+                }
+                isSaving={isSaving}
+                onCancel={() => setPendingDeleteCategory(null)}
+                onConfirm={confirmDeleteCategory}
+            />
         </Stack>
     );
 }

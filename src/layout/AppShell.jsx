@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import {
   Alert,
@@ -22,6 +22,7 @@ export function AppShell() {
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== "undefined" ? !navigator.onLine : false,
   );
+  const feedbackRef = useRef(null);
 
   const { error, setError, message, setMessage } = useAppFeedbackContext();
 
@@ -42,6 +43,17 @@ export function AppShell() {
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
+
+  useEffect(() => {
+    if (!error && !message) {
+      return;
+    }
+
+    feedbackRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [error, message]);
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", background: "linear-gradient(180deg, #f4f7fb 0%, #eef7f5 100%)" }}>
@@ -98,43 +110,47 @@ export function AppShell() {
         )}
 
         {/* Feedback banners */}
-        {error ? (
-          <Alert
-            variant="outlined"
-            severity="error"
-            sx={{ m: 2, mb: 0, backgroundColor: "#ffcdcdff" }}
-            action={
-              <IconButton
-                aria-label="close error"
-                color="inherit"
-                size="small"
-                onClick={() => setError(null)}
+        {error || message ? (
+          <Box ref={feedbackRef}>
+            {error ? (
+              <Alert
+                variant="outlined"
+                severity="error"
+                sx={{ m: 2, mb: 0, backgroundColor: "#ffcdcdff" }}
+                action={
+                  <IconButton
+                    aria-label="close error"
+                    color="inherit"
+                    size="small"
+                    onClick={() => setError(null)}
+                  >
+                    <CloseIcon fontSize="inherit" />
+                  </IconButton>
+                }
               >
-                <CloseIcon fontSize="inherit" />
-              </IconButton>
-            }
-          >
-            {error}
-          </Alert>
-        ) : null}
-        {message ? (
-          <Alert
-            variant="outlined"
-            severity="success"
-            sx={{ m: 2, mb: 0, backgroundColor: "#d4edda" }}
-            action={
-              <IconButton
-                aria-label="close message"
-                color="inherit"
-                size="small"
-                onClick={() => setMessage(null)}
+                {error}
+              </Alert>
+            ) : null}
+            {message ? (
+              <Alert
+                variant="outlined"
+                severity="success"
+                sx={{ m: 2, mb: 0, backgroundColor: "#d4edda" }}
+                action={
+                  <IconButton
+                    aria-label="close message"
+                    color="inherit"
+                    size="small"
+                    onClick={() => setMessage(null)}
+                  >
+                    <CloseIcon fontSize="inherit" />
+                  </IconButton>
+                }
               >
-                <CloseIcon fontSize="inherit" />
-              </IconButton>
-            }
-          >
-            {message}
-          </Alert>
+                {message}
+              </Alert>
+            ) : null}
+          </Box>
         ) : null}
         {isOffline ? (
           <Alert
