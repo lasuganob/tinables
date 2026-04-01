@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchData, loadBootstrapData, postData } from "../api/googleSheets";
 import { normaliseTransaction } from "../utils/transactions";
+
+const APP_RESUME_REFRESH_THRESHOLD_MS = 2 * 60 * 1000;
 
 function cleanValue(value) {
     return typeof value === "string" ? value.trim() : value;
@@ -109,27 +111,78 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
     const [accounts, setAccounts] = useState([]);
     const [accountTypes, setAccountTypes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const hiddenAtRef = useRef(0);
+    const lastResumeRefreshAtRef = useRef(0);
+
+    async function bootstrapData() {
+        try {
+            setIsLoading(true);
+            setError("");
+            const data = await loadBootstrapData(selectedUser);
+            setTransactions(data.transactions.map(normaliseTransaction));
+            setCategories(data.categories.map(normaliseCategory));
+            setTags(data.tags.map(normaliseTag));
+            setUsers(data.users.map(normaliseUser));
+            setAccounts(data.accounts.map(normaliseAccount));
+            setAccountTypes(data.accountTypes.map(normaliseAccountType));
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     useEffect(() => {
-        async function bootstrap() {
-            try {
-                setIsLoading(true);
-                setError("");
-                const data = await loadBootstrapData(selectedUser);
-                setTransactions(data.transactions.map(normaliseTransaction));
-                setCategories(data.categories.map(normaliseCategory));
-                setTags(data.tags.map(normaliseTag));
-                setUsers(data.users.map(normaliseUser));
-                setAccounts(data.accounts.map(normaliseAccount));
-                setAccountTypes(data.accountTypes.map(normaliseAccountType));
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
+        bootstrapData();
+    }, [selectedUser]);
+
+    useEffect(() => {
+        function shouldRefreshOnResume() {
+            const hiddenAt = hiddenAtRef.current;
+
+            if (!hiddenAt) {
+                return false;
+            }
+
+            const now = Date.now();
+
+            if (now - hiddenAt < APP_RESUME_REFRESH_THRESHOLD_MS) {
+                return false;
+            }
+
+            if (now - lastResumeRefreshAtRef.current < 1500) {
+                return false;
+            }
+
+            lastResumeRefreshAtRef.current = now;
+            hiddenAtRef.current = 0;
+            return true;
+        }
+
+        function handleVisibilityChange() {
+            if (document.visibilityState === "hidden") {
+                hiddenAtRef.current = Date.now();
+                return;
+            }
+
+            if (document.visibilityState === "visible" && shouldRefreshOnResume()) {
+                void bootstrapData();
             }
         }
 
-        bootstrap();
+        function handleFocus() {
+            if (shouldRefreshOnResume()) {
+                void bootstrapData();
+            }
+        }
+
+        window.addEventListener("focus", handleFocus);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener("focus", handleFocus);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
     }, [selectedUser]);
 
     async function refreshTransactions(userOverride = selectedUser) {
