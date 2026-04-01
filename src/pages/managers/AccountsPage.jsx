@@ -1,5 +1,22 @@
 import { useMemo, useState } from "react";
-import { Box, Button, Chip, Divider, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
+import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    Box,
+    Button,
+    Chip,
+    Divider,
+    FormControl,
+    IconButton,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    Stack,
+    TextField,
+    Typography
+} from "@mui/material";
 import { useAppDataContext } from "../../context/AppDataContext";
 import { useAppFeedbackContext } from "../../context/AppDataContext";
 import { useAppFiltersContext } from "../../context/AppFiltersContext";
@@ -9,6 +26,12 @@ import { SectionSkeleton } from "../../components/Skeletons";
 import { ConfirmDeleteDialog } from "../../components/ConfirmDeleteDialog";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import MoneyIcon from '@mui/icons-material/Money';
+import SavingsIcon from '@mui/icons-material/Savings';
+
 
 export function AccountsPage() {
     const { accounts, accountTypes, users, isLoading, handleDelete, saveAccountLocally } = useAppDataContext();
@@ -18,6 +41,7 @@ export function AccountsPage() {
 
     const isViewLoading = isLoading || isFilterLoading;
     const [pendingDeleteAccount, setPendingDeleteAccount] = useState(null);
+    const [expandedTypePanels, setExpandedTypePanels] = useState({ "1": false, "2": false, "3": true, "4": false });
 
     const { accountForm, setAccountForm, handleAccountSubmit } = useAccountForm({
         saveAccountLocally,
@@ -49,6 +73,45 @@ export function AccountsPage() {
             return !account.user || owner === selectedUser;
         });
     }, [accounts, selectedUser, userNameById]);
+
+    const groupedAccounts = useMemo(() => {
+        const typeNameById = new Map(
+            accountTypeOptions.map((accountType) => [String(accountType.id), accountType.name])
+        );
+        const groups = new Map();
+
+        availableAccounts.forEach((account) => {
+            const typeKey = String(account.type);
+            const typeName = typeNameById.get(typeKey) || `Type ${typeKey}`;
+
+            if (!groups.has(typeKey)) {
+                groups.set(typeKey, {
+                    typeKey,
+                    typeName,
+                    accounts: []
+                });
+            }
+
+            groups.get(typeKey).accounts.push(account);
+        });
+
+        return [...groups.values()].sort((left, right) =>
+            left.typeName.localeCompare(right.typeName)
+        );
+    }, [accountTypeOptions, availableAccounts]);
+
+    function isPanelExpanded(typeKey) {
+        return expandedTypePanels[typeKey] ?? true;
+    }
+
+    function handlePanelToggle(typeKey) {
+        return (_, isExpanded) => {
+            setExpandedTypePanels((current) => ({
+                ...current,
+                [typeKey]: isExpanded
+            }));
+        };
+    }
 
     return (
         <Stack spacing={3}>
@@ -134,40 +197,79 @@ export function AccountsPage() {
                         <Divider />
 
                         <Stack spacing={1.25}>
-                            {availableAccounts.map((account) => (
-                                <Paper key={account.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
-                                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ sm: "center" }}>
-                                        <Stack>
-                                            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-                                                <Typography fontWeight={600}>{account.name}</Typography>
-                                                <Chip
-                                                    size="small"
-                                                    label={accountTypeOptions.find((accountType) => Number(accountType.id) === Number(account.type))?.name || account.type}
-                                                    variant="outlined"
-                                                />
-                                                <Chip size="small" label={Number(account.is_active) === 1 ? "Active" : "Inactive"} variant="filled" color={Number(account.is_active) === 1 ? "info" : "error"} />
-                                                <Chip size="small" label={userNameById.get(String(account.user)) || "Unassigned"} variant="filled" color={account.user === 1 ? "warning" : "primary"} />
-                                            </Stack>
-                                            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-                                                <Typography variant="h6" color="green" fontWeight={600}>
-                                                    ₱{Number(account.balance || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {groupedAccounts.map((group) => (
+                                <Accordion
+                                    key={group.typeKey}
+                                    expanded={isPanelExpanded(group.typeKey)}
+                                    onChange={handlePanelToggle(group.typeKey)}
+                                    disableGutters
+                                    elevation={0}
+                                    sx={{
+                                        border: "1px solid",
+                                        borderColor: "divider",
+                                        borderRadius: 1,
+                                        "&:before": { display: "none" }
+                                    }}
+                                >
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                        <Stack
+                                            direction="row"
+                                            spacing={1}
+                                            alignItems="center"
+                                            justifyContent="space-between"
+                                            sx={{ width: "100%", pr: 1 }}
+                                        >
+                                            <Stack direction="row" spacing={1} alignItems="center">
+                                                {group.typeKey == "1" && <MoneyIcon />}
+                                                {group.typeKey == "2" && <AccountBalanceWalletIcon />}
+                                                {group.typeKey == "3" && <AccountBalanceIcon />}
+                                                {group.typeKey == "4" && <SavingsIcon />}
+                                                <Typography fontWeight={700} textTransform="capitalize">
+                                                    {group.typeName}
                                                 </Typography>
                                             </Stack>
+                                            <Chip
+                                                size="small"
+                                                label={`${group.accounts.length} ${group.accounts.length === 1 ? "account" : "accounts"}`}
+                                                variant="outlined"
+                                            />
                                         </Stack>
+                                    </AccordionSummary>
+                                    <AccordionDetails sx={{ pt: 0 }}>
+                                        <Stack spacing={1.25}>
+                                            {group.accounts.map((account) => (
+                                                <Paper key={account.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                                                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ sm: "center" }}>
+                                                        <Stack>
+                                                            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                                                                <Typography fontWeight={600}>{account.name}</Typography>
+                                                                <Chip size="small" label={Number(account.is_active) === 1 ? "Active" : "Inactive"} variant="filled" color={Number(account.is_active) === 1 ? "info" : "error"} />
+                                                                <Chip size="small" label={userNameById.get(String(account.user)) || "Unassigned"} variant="filled" color={account.user === 1 ? "warning" : "primary"} />
+                                                            </Stack>
+                                                            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                                                                <Typography variant="h6" color="green" fontWeight={600}>
+                                                                    ₱{Number(account.balance || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                </Typography>
+                                                            </Stack>
+                                                        </Stack>
 
-                                        <Stack direction="row" spacing={1}>
-                                            <IconButton aria-label="edit" size="small" onClick={() => {
-                                                setAccountForm({ ...account, user: account.user === "" ? "" : String(account.user) });
-                                                window.scrollTo({ top: 0, behavior: "smooth" });
-                                            }}>
-                                                <EditIcon />
-                                            </IconButton>
-                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => setPendingDeleteAccount(account)}>
-                                                <DeleteIcon />
-                                            </IconButton>
+                                                        <Stack direction="row" spacing={1}>
+                                                            <IconButton aria-label="edit" size="small" onClick={() => {
+                                                                setAccountForm({ ...account, user: account.user === "" ? "" : String(account.user) });
+                                                                window.scrollTo({ top: 0, behavior: "smooth" });
+                                                            }}>
+                                                                <EditIcon />
+                                                            </IconButton>
+                                                            <IconButton aria-label="delete" size="small" color="error" onClick={() => setPendingDeleteAccount(account)}>
+                                                                <DeleteIcon />
+                                                            </IconButton>
+                                                        </Stack>
+                                                    </Stack>
+                                                </Paper>
+                                            ))}
                                         </Stack>
-                                    </Stack>
-                                </Paper>
+                                    </AccordionDetails>
+                                </Accordion>
                             ))}
                         </Stack>
                     </Stack>

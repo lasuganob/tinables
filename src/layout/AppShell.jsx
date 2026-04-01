@@ -54,6 +54,30 @@ export function AppShell() {
     });
   }, [error, message]);
 
+  useEffect(() => {
+    if (!error) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setError("");
+    }, 10000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [error, setError]);
+
+  useEffect(() => {
+    if (!message) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setMessage("");
+    }, 10000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [message, setMessage]);
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", background: "linear-gradient(180deg, #f4f7fb 0%, #eef7f5 100%)" }}>
       <SidebarNav

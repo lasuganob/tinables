@@ -37,5 +37,6 @@ export const emptyAccount = {
 export const fallbackAccountTypes = [
     { id: 1, name: "cash" },
     { id: 2, name: "e-wallet" },
-    { id: 3, name: "bank" }
+    { id: 3, name: "bank" },
+    { id: 4, name: "savings" }
 ];
