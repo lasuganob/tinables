@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import {
     Box, Button, Chip, FormControl,
     IconButton, InputLabel, ListItemIcon, ListItemText, Menu, MenuItem,
-    OutlinedInput, Paper, Select, Skeleton, Stack, Table, TableBody, TableCell,
+    ListSubheader, OutlinedInput, Paper, Select, Skeleton, Stack, Table, TableBody, TableCell,
     TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Typography,
     useMediaQuery, useTheme
 } from "@mui/material";
@@ -13,6 +13,10 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { TableSkeleton } from "../components/Skeletons";
 import { parseDateValue } from "../lib/format";
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import MoneyIcon from '@mui/icons-material/Money';
+import SavingsIcon from '@mui/icons-material/Savings';
 
 export function RecentTransactionsSection({
     isViewLoading,
@@ -26,6 +30,7 @@ export function RecentTransactionsSection({
     isSaving,
     filteredCategories,
     accounts,
+    accountTypes,
     users,
     transactionFormTagIds,
     tags,
@@ -179,6 +184,49 @@ export function RecentTransactionsSection({
         userNameById
     ]);
 
+    const groupedAccountOptions = useMemo(() => {
+        const typeNameById = new Map(
+            (accountTypes || []).map((accountType) => [String(accountType.id), accountType.name])
+        );
+        const groups = new Map();
+
+        accountOptionsWithUser.forEach((account) => {
+            const typeKey = String(account.type || "");
+            const typeName = typeNameById.get(typeKey) || "Other";
+
+            if (!groups.has(typeKey)) {
+                groups.set(typeKey, {
+                    typeKey,
+                    typeName,
+                    accounts: []
+                });
+            }
+
+            groups.get(typeKey).accounts.push(account);
+        });
+
+        return [...groups.values()].sort((left, right) =>
+            left.typeName.localeCompare(right.typeName)
+        );
+    }, [accountOptionsWithUser, accountTypes]);
+
+    function renderAccountOptionItems(items) {
+        return items.map((account) => (
+            <MenuItem key={account.id} value={String(account.id)} sx={{ pl: 4 }}>
+                {account.name}
+                {account.userName ? (
+                    <Chip
+                        color={account.user === 1 ? "warning" : "primary"}
+                        variant="filled"
+                        size="small"
+                        label={account.userName}
+                        sx={{ ml: 1 }}
+                    />
+                ) : null}
+            </MenuItem>
+        ));
+    }
+
     function renderTransactionEditor() {
         const isTransfer = transactionForm.type === "transfer";
 
@@ -197,52 +245,71 @@ export function RecentTransactionsSection({
                     disabled={isSaving}
                     slotProps={{ textField: { fullWidth: true, required: true, size: "small" } }}
                 />
-                <FormControl fullWidth size="small" disabled={isSaving}>
-                    <InputLabel>Type</InputLabel>
+                <FormControl fullWidth size="small" disabled={isSaving} required>
+                    <InputLabel required>Type</InputLabel>
                     <Select
                         label="Type"
                         value={transactionForm.type}
                         onChange={(event) => setTransactionForm({ ...transactionForm, type: event.target.value, category_id: "" })}
+                        required
                     >
                         <MenuItem value="expense">Expense</MenuItem>
                         <MenuItem value="income">Income</MenuItem>
                         <MenuItem value="transfer">Transfer</MenuItem>
                     </Select>
                 </FormControl>
-                <FormControl fullWidth size="small" disabled={isSaving}>
-                    <InputLabel>{isTransfer ? "From Account" : "Account"}</InputLabel>
+                <FormControl fullWidth size="small" disabled={isSaving} required>
+                    <InputLabel required>{isTransfer ? "From Account" : "Account"}</InputLabel>
                     <Select
                         label={isTransfer ? "From Account" : "Account"}
                         value={String(transactionForm.account_id ?? "")}
                         onChange={(event) => setTransactionForm({ ...transactionForm, account_id: event.target.value })}
+                        required
                     >
                         <MenuItem value="">Select an account</MenuItem>
-                        {accountOptionsWithUser.map((account) => (
-                            <MenuItem key={account.id} value={String(account.id)}>
-                                {account.name}
-                                <Chip color={account.user === 1 ? "warning" : "primary"} variant="filled" size="small" label={account.userName} sx={{ ml: 1 }} />
-                            </MenuItem>
-                        ))}
+                        {groupedAccountOptions.map((group) => ([
+                            <ListSubheader key={`from-header-${group.typeKey}`} sx={{ textTransform: "capitalize", display: "flex", alignItems: "center", gap: 1, fontWeight: "bold" }}>
+                                {group.typeName == "cash" && <MoneyIcon />}
+                                {group.typeName == "e-wallet" && <AccountBalanceWalletIcon />}
+                                {group.typeName == "bank" && <AccountBalanceIcon />}
+                                {group.typeName == "savings" && <SavingsIcon />}
+                                {group.typeName}
+                            </ListSubheader>,
+                            ...renderAccountOptionItems(group.accounts)
+                        ]))}
                     </Select>
                 </FormControl>
                 {isTransfer ? (
                     <>
-                        <FormControl fullWidth size="small" disabled={isSaving}>
-                            <InputLabel>To Account</InputLabel>
+                        <FormControl fullWidth size="small" disabled={isSaving} required={isTransfer}>
+                            <InputLabel required={isTransfer}>To Account</InputLabel>
                             <Select
                                 label="To Account"
                                 value={String(transactionForm.transfer_account_id ?? "")}
                                 onChange={(event) => setTransactionForm({ ...transactionForm, transfer_account_id: event.target.value })}
+                                required={isTransfer}
                             >
                                 <MenuItem value="">Select an account</MenuItem>
-                                {accountOptionsWithUser
-                                    .filter((account) => String(account.id) !== String(transactionForm.account_id))
-                                    .map((account) => (
-                                        <MenuItem key={account.id} value={String(account.id)}>
-                                            {account.name}
-                                            <Chip color={account.user === 1 ? "warning" : "primary"} variant="filled" size="small" label={account.userName} sx={{ ml: 1 }} /> 
-                                        </MenuItem>
-                                    ))}
+                                {groupedAccountOptions.map((group) => {
+                                    const eligibleAccounts = group.accounts.filter(
+                                        (account) => String(account.id) !== String(transactionForm.account_id)
+                                    );
+
+                                    if (!eligibleAccounts.length) {
+                                        return null;
+                                    }
+
+                                    return [
+                                        <ListSubheader key={`to-header-${group.typeKey}`} sx={{ textTransform: "capitalize", display: "flex", alignItems: "center", gap: 1, fontWeight: "bold" }}>
+                                            {group.typeName == "cash" && <MoneyIcon />}
+                                            {group.typeName == "e-wallet" && <AccountBalanceWalletIcon />}
+                                            {group.typeName == "bank" && <AccountBalanceIcon />}
+                                            {group.typeName == "savings" && <SavingsIcon />}
+                                            {group.typeName}
+                                        </ListSubheader>,
+                                        ...renderAccountOptionItems(eligibleAccounts)
+                                    ];
+                                })}
                             </Select>
                         </FormControl>
                         <TextField
@@ -257,12 +324,13 @@ export function RecentTransactionsSection({
                         />
                     </>
                 ) : (
-                    <FormControl fullWidth size="small" disabled={isSaving}>
-                        <InputLabel>Category</InputLabel>
+                    <FormControl fullWidth size="small" disabled={isSaving} required>
+                        <InputLabel required>Category</InputLabel>
                         <Select
                             label="Category"
                             value={String(transactionForm.category_id ?? "")}
                             onChange={(event) => setTransactionForm({ ...transactionForm, category_id: event.target.value })}
+                            required
                         >
                             <MenuItem value="">Select a category</MenuItem>
                             {filteredCategories.map((category) => (
@@ -282,12 +350,13 @@ export function RecentTransactionsSection({
                     required
                     fullWidth
                 />
-                <FormControl fullWidth size="small" disabled={isSaving}>
-                    <InputLabel>User</InputLabel>
+                <FormControl fullWidth size="small" disabled={isSaving} required>
+                    <InputLabel required>User</InputLabel>
                     <Select
                         label="User"
                         value={transactionForm.user}
                         onChange={(event) => setTransactionForm({ ...transactionForm, user: event.target.value })}
+                        required
                     >
                         <MenuItem value="">All</MenuItem>
                         {users.map((user) => (
@@ -343,10 +412,29 @@ export function RecentTransactionsSection({
                             || (isTransfer && (!transactionForm.transfer_account_id || transactionForm.transfer_account_id === transactionForm.account_id))
                         }
                         fullWidth={isMobile}
+                        sx={{
+                            bgcolor: "#4a6555",
+                            "&:hover": {
+                                bgcolor: "#3f594b"
+                            }
+                        }}
                     >
                         {isSaving ? "Saving..." : transactionForm.id ? "Save Entry" : "Add Entry"}
                     </Button>
-                    <Button variant="outlined" onClick={cancelInlineTransaction} disabled={isSaving} fullWidth={isMobile}>
+                    <Button
+                        variant="outlined"
+                        onClick={cancelInlineTransaction}
+                        disabled={isSaving}
+                        fullWidth={isMobile}
+                        sx={{
+                            color: "#4a6555",
+                            borderColor: "rgba(74,101,85,0.35)",
+                            "&:hover": {
+                                borderColor: "#4a6555",
+                                bgcolor: "rgba(74,101,85,0.08)"
+                            }
+                        }}
+                    >
                         Cancel
                     </Button>
                 </Stack>
@@ -492,6 +580,12 @@ export function RecentTransactionsSection({
                         onClick={openNewTransactionRow}
                         disabled={showInlineTransactionEditor}
                         fullWidth={isMobile}
+                        sx={{
+                            bgcolor: "#4a6555",
+                            "&:hover": {
+                                bgcolor: "#3f594b"
+                            }
+                        }}
                     >
                         Add Entry
                     </Button>

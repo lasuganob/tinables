@@ -4,6 +4,7 @@ import { useAppDataContext } from "../context/AppDataContext";
 import { useAppFeedbackContext } from "../context/AppDataContext";
 import { useAppFiltersContext } from "../context/AppFiltersContext";
 import { useTransactionForm } from "../hooks/useTransactionForm";
+import { fallbackAccountTypes } from "../constants/defaults";
 import { formatCurrency, formatDate } from "../lib/format";
 import { RecentTransactionsSection } from "../sections/RecentTransactionsSection";
 
@@ -14,6 +15,7 @@ export function TransactionsPage() {
     tags,
     users,
     accounts,
+    accountTypes,
     isLoading,
     handleDelete,
     saveTransactionLocally,
@@ -123,6 +125,11 @@ export function TransactionsPage() {
     });
   }, [accounts, selectedUser, transactionForm.account_id, transactionForm.transfer_account_id, userNameById]);
 
+  const accountTypeOptions = useMemo(
+    () => (accountTypes.length ? accountTypes : fallbackAccountTypes),
+    [accountTypes],
+  );
+
   return (
     <Stack spacing={3}>
       <Stack spacing={0.5}>
@@ -146,6 +153,7 @@ export function TransactionsPage() {
         isSaving={isSaving}
         filteredCategories={filteredCategories}
         accounts={availableAccounts}
+        accountTypes={accountTypeOptions}
         users={users}
         transactionFormTagIds={transactionFormTagIds}
         tags={tags}

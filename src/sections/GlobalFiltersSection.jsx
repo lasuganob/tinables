@@ -102,7 +102,15 @@ export function GlobalFiltersSection({
                         setSelectedUser("");
                         setDateFilter({ mode: "month", month: getCurrentMonthInAppTimeZone(), year: "", startDate: "", endDate: "" })
                     }}
-                    sx={{ minHeight: 40 }}
+                    sx={{
+                        minHeight: 40,
+                        color: "#4a6555",
+                        borderColor: "rgba(74,101,85,0.35)",
+                        "&:hover": {
+                            borderColor: "#4a6555",
+                            bgcolor: "rgba(74,101,85,0.08)"
+                        }
+                    }}
                 >
                     Clear Filter
                 </Button>

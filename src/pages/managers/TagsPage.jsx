@@ -57,11 +57,34 @@ export function TagsPage() {
                                 fullWidth
                             />
                             <Stack direction="row" spacing={1.5}>
-                                <Button type="submit" variant="contained" disabled={isSaving}>
+                                <Button
+                                    type="submit"
+                                    variant="contained"
+                                    disabled={isSaving}
+                                    sx={{
+                                        bgcolor: "#4a6555",
+                                        "&:hover": {
+                                            bgcolor: "#3f594b"
+                                        }
+                                    }}
+                                >
                                     {tagForm.id ? "Update Tag" : "Add Tag"}
                                 </Button>
                                 {tagForm.id ? (
-                                    <Button variant="outlined" onClick={() => setTagForm(emptyTag)}>Cancel Edit</Button>
+                                    <Button
+                                        variant="outlined"
+                                        onClick={() => setTagForm(emptyTag)}
+                                        sx={{
+                                            color: "#4a6555",
+                                            borderColor: "rgba(74,101,85,0.35)",
+                                            "&:hover": {
+                                                borderColor: "#4a6555",
+                                                bgcolor: "rgba(74,101,85,0.08)"
+                                            }
+                                        }}
+                                    >
+                                        Cancel Edit
+                                    </Button>
                                 ) : null}
                             </Stack>
                         </Box>

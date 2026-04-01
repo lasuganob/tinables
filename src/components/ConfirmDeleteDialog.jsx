@@ -19,7 +19,17 @@ export function ConfirmDeleteDialog({
                 <Button onClick={onCancel} disabled={isSaving}>
                     Cancel
                 </Button>
-                <Button onClick={onConfirm} color="error" variant="contained" disabled={isSaving}>
+                <Button
+                    onClick={onConfirm}
+                    variant="contained"
+                    disabled={isSaving}
+                    sx={{
+                        bgcolor: "#4a6555",
+                        "&:hover": {
+                            bgcolor: "#3f594b"
+                        }
+                    }}
+                >
                     {isSaving ? "Deleting..." : confirmLabel}
                 </Button>
             </DialogActions>
