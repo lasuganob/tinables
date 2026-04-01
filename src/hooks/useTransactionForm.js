@@ -50,7 +50,7 @@ function getEffectiveBalances(accounts, transactions, transactionForm) {
     return balances;
 }
 
-export function useTransactionForm({ selectedUser, users, accounts, transactions, refreshTransactions, refreshAccounts, setError, setMessage, setIsSaving }) {
+export function useTransactionForm({ selectedUser, users, accounts, transactions, saveTransactionLocally, setError, setMessage, setIsSaving }) {
     const [transactionForm, setTransactionForm] = useState(emptyTransaction);
 
     // Once the user list is available, fill in the form's user field if it is still blank.
@@ -103,11 +103,16 @@ export function useTransactionForm({ selectedUser, users, accounts, transactions
         }
 
         try {
-            await postData(transactionForm.id ? "updateTransaction" : "addTransaction", payload);
-            await refreshTransactions();
-            await refreshAccounts();
+            const previousTransaction = transactionForm.id
+                ? transactions.find((transaction) => String(transaction.id) === String(transactionForm.id)) || null
+                : null;
+            const result = await postData(transactionForm.id ? "updateTransaction" : "addTransaction", payload);
+            saveTransactionLocally(
+                { ...payload, id: result.id ?? payload.id },
+                previousTransaction
+            );
             resetTransactionForm();
-            setMessage(`Transaction ${payload.id} saved.`);
+            setMessage(`Transaction ${result.id ?? payload.id} saved.`);
             return true;
         } catch (err) {
             setError(err.message);

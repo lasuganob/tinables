@@ -7,7 +7,7 @@ import { slugify } from "../lib/format";
  * Manages the account form: state and submit handler.
  * Calls refreshAccounts after a successful save so the list stays in sync.
  */
-export function useAccountForm({ refreshAccounts, setError, setMessage, setIsSaving }) {
+export function useAccountForm({ saveAccountLocally, setError, setMessage, setIsSaving }) {
     const [accountForm, setAccountForm] = useState(emptyAccount);
 
     async function handleAccountSubmit(event) {
@@ -26,8 +26,8 @@ export function useAccountForm({ refreshAccounts, setError, setMessage, setIsSav
         };
 
         try {
-            await postData(accountForm.id ? "updateAccount" : "addAccount", payload);
-            await refreshAccounts();
+            const result = await postData(accountForm.id ? "updateAccount" : "addAccount", payload);
+            saveAccountLocally({ ...payload, id: result.id ?? payload.id });
             setAccountForm(emptyAccount);
             setMessage(`Account "${payload.name}" saved.`);
         } catch (err) {

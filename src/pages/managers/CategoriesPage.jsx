@@ -9,7 +9,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 export function CategoriesPage() {
-    const { categories, isLoading, refreshCategories, handleDelete } = useAppDataContext();
+    const { categories, isLoading, handleDelete, saveCategoryLocally } = useAppDataContext();
     const { isSaving, setError, setMessage, setIsSaving } = useAppFeedbackContext();
     const { isFilterLoading } = useAppFiltersContext();
     const feedback = { setError, setMessage, setIsSaving };
@@ -17,7 +17,7 @@ export function CategoriesPage() {
     const isViewLoading = isLoading || isFilterLoading;
 
     const { categoryForm, setCategoryForm, handleCategorySubmit } =
-        useCategoryForm({ refreshCategories, ...feedback });
+        useCategoryForm({ saveCategoryLocally, ...feedback });
 
     return (
         <Stack spacing={3}>

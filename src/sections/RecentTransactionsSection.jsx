@@ -44,6 +44,10 @@ export function RecentTransactionsSection({
     const [activeTransaction, setActiveTransaction] = useState(null);
     const [showInlineTransactionEditor, setShowInlineTransactionEditor] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState("");
+    const userNameById = useMemo(
+        () => new Map(users.map((user) => [String(user.id), user.name])),
+        [users]
+    );
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -146,7 +150,7 @@ export function RecentTransactionsSection({
         setShowInlineTransactionEditor(false);
     }
 
-    function getAccountOptions() {
+    const accountOptionsWithUser = useMemo(() => {
         const accountOptions = [...accounts];
         const selectedAccountIds = [
             String(transactionForm.account_id || ""),
@@ -165,13 +169,18 @@ export function RecentTransactionsSection({
 
         return accountOptions.map((account) => ({
             ...account,
-            userName: users.find((user) => String(user.id) === String(account.user))?.name || ""
+            userName: userNameById.get(String(account.user)) || ""
         }));
-    }
+    }, [
+        accounts,
+        transactionForm.account_id,
+        transactionForm.transfer_account_id,
+        accountNameById,
+        userNameById
+    ]);
 
     function renderTransactionEditor() {
         const isTransfer = transactionForm.type === "transfer";
-        const accountOptionsWithUser = getAccountOptions();
 
         return (
             <Box

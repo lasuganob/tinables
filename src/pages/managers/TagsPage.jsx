@@ -9,7 +9,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 export function TagsPage() {
-    const { tags, isLoading, refreshTags, handleDelete } = useAppDataContext();
+    const { tags, isLoading, handleDelete, saveTagLocally } = useAppDataContext();
     const { isSaving, setError, setMessage, setIsSaving } = useAppFeedbackContext();
     const { isFilterLoading } = useAppFiltersContext();
     const feedback = { setError, setMessage, setIsSaving };
@@ -17,7 +17,7 @@ export function TagsPage() {
     const isViewLoading = isLoading || isFilterLoading;
 
     const { tagForm, setTagForm, handleTagSubmit } = useTagForm({
-        refreshTags,
+        saveTagLocally,
         ...feedback,
     });
 

@@ -10,7 +10,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 export function AccountsPage() {
-    const { accounts, accountTypes, users, isLoading, refreshAccounts, handleDelete } = useAppDataContext();
+    const { accounts, accountTypes, users, isLoading, handleDelete, saveAccountLocally } = useAppDataContext();
     const { isSaving, setError, setMessage, setIsSaving } = useAppFeedbackContext();
     const { selectedUser, isFilterLoading } = useAppFiltersContext();
     const feedback = { setError, setMessage, setIsSaving };
@@ -18,7 +18,7 @@ export function AccountsPage() {
     const isViewLoading = isLoading || isFilterLoading;
 
     const { accountForm, setAccountForm, handleAccountSubmit } = useAccountForm({
-        refreshAccounts,
+        saveAccountLocally,
         ...feedback,
     });
 
@@ -35,11 +35,10 @@ export function AccountsPage() {
     const availableAccounts = useMemo(() => {
         return accounts.filter((account) => {
             if (!selectedUser) return true;
-            const owner =
-                users.find((u) => String(u.id) === String(account.user))?.name || "";
+            const owner = userNameById.get(String(account.user)) || "";
             return !account.user || owner === selectedUser;
         });
-    }, [accounts, selectedUser, users]);
+    }, [accounts, selectedUser, userNameById]);
 
     return (
         <Stack spacing={3}>
@@ -128,17 +127,24 @@ export function AccountsPage() {
                             {availableAccounts.map((account) => (
                                 <Paper key={account.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ sm: "center" }}>
-                                        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-                                            <Typography fontWeight={600}>{account.name}</Typography>
-                                            <Chip
-                                                size="small"
-                                                label={accountTypeOptions.find((accountType) => Number(accountType.id) === Number(account.type))?.name || account.type}
-                                                variant="outlined"
-                                            />
-                                            <Chip size="small" label={`PHP ${Number(account.balance || 0).toFixed(2)}`} color="secondary" variant="outlined" />
-                                            <Chip size="small" label={Number(account.is_active) === 1 ? "Active" : "Inactive"} variant="filled" color={Number(account.is_active) === 1 ? "info" : "error"} />
-                                            <Chip size="small" label={userNameById.get(String(account.user)) || "Unassigned"} variant="filled" color={account.user === 1 ? "warning" : "primary"} />
+                                        <Stack>
+                                            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                                                <Typography fontWeight={600}>{account.name}</Typography>
+                                                <Chip
+                                                    size="small"
+                                                    label={accountTypeOptions.find((accountType) => Number(accountType.id) === Number(account.type))?.name || account.type}
+                                                    variant="outlined"
+                                                />
+                                                <Chip size="small" label={Number(account.is_active) === 1 ? "Active" : "Inactive"} variant="filled" color={Number(account.is_active) === 1 ? "info" : "error"} />
+                                                <Chip size="small" label={userNameById.get(String(account.user)) || "Unassigned"} variant="filled" color={account.user === 1 ? "warning" : "primary"} />
+                                            </Stack>
+                                            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                                                <Typography variant="h6" color="green" fontWeight={600}>
+                                                    ₱{Number(account.balance || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </Typography>
+                                            </Stack>
                                         </Stack>
+
                                         <Stack direction="row" spacing={1}>
                                             <IconButton aria-label="edit" size="small" onClick={() => setAccountForm({ ...account, user: account.user === "" ? "" : String(account.user) })}>
                                                 <EditIcon />

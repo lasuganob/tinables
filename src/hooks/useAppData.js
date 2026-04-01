@@ -51,6 +51,51 @@ function normaliseAccountType(accountType) {
     };
 }
 
+function upsertById(items, nextItem) {
+    const nextId = String(nextItem.id);
+    const index = items.findIndex((item) => String(item.id) === nextId);
+
+    if (index === -1) {
+        return [nextItem, ...items];
+    }
+
+    return items.map((item, itemIndex) => (itemIndex === index ? nextItem : item));
+}
+
+function removeById(items, id) {
+    const targetId = String(id);
+    return items.filter((item) => String(item.id) !== targetId);
+}
+
+function applyTransactionToAccounts(accounts, transaction, direction) {
+    const amount = Number(transaction.amount || 0);
+    const multiplier = direction === "reverse" ? -1 : 1;
+    const sourceAccountId = String(transaction.account_id || "");
+    const transferAccountId = String(transaction.transfer_account_id || "");
+
+    return accounts.map((account) => {
+        const accountId = String(account.id);
+        let nextBalance = Number(account.balance || 0);
+
+        if (transaction.type === "income" && accountId === sourceAccountId) {
+            nextBalance += amount * multiplier;
+        } else if (transaction.type === "expense" && accountId === sourceAccountId) {
+            nextBalance -= amount * multiplier;
+        } else if (transaction.type === "transfer") {
+            if (accountId === sourceAccountId) {
+                nextBalance -= amount * multiplier;
+            }
+            if (accountId === transferAccountId) {
+                nextBalance += amount * multiplier;
+            }
+        }
+
+        return nextBalance === Number(account.balance || 0)
+            ? account
+            : { ...account, balance: nextBalance };
+    });
+}
+
 /**
  * Loads all bootstrap data on mount and whenever selectedUser changes.
  * Also provides helpers to refresh individual collections and a shared delete handler.
@@ -103,6 +148,41 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         setAccounts((await fetchData("getAccounts")).map(normaliseAccount));
     }
 
+    function saveCategoryLocally(category) {
+        const normalised = normaliseCategory(category);
+        setCategories((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
+    function saveTagLocally(tag) {
+        const normalised = normaliseTag(tag);
+        setTags((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
+    function saveAccountLocally(account) {
+        const normalised = normaliseAccount(account);
+        setAccounts((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
+    function saveTransactionLocally(transaction, previousTransaction = null) {
+        const normalised = normaliseTransaction(transaction);
+
+        setTransactions((current) => upsertById(current, normalised));
+        setAccounts((current) => {
+            let nextAccounts = current;
+
+            if (previousTransaction) {
+                nextAccounts = applyTransactionToAccounts(nextAccounts, previousTransaction, "reverse");
+            }
+
+            return applyTransactionToAccounts(nextAccounts, normalised, "apply");
+        });
+
+        return normalised;
+    }
+
     async function handleDelete(action, id) {
         setIsSaving(true);
         setError("");
@@ -110,16 +190,21 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
 
         try {
             await postData(action, { id });
-            const [nextTransactions, nextCategories, nextTags, nextAccounts] = await Promise.all([
-                fetchData("getTransactions", selectedUser ? { user: selectedUser } : {}),
-                fetchData("getCategories"),
-                fetchData("getTags"),
-                fetchData("getAccounts")
-            ]);
-            setTransactions(nextTransactions.map(normaliseTransaction));
-            setCategories(nextCategories.map(normaliseCategory));
-            setTags(nextTags.map(normaliseTag));
-            setAccounts(nextAccounts.map(normaliseAccount));
+
+            if (action === "deleteTransaction") {
+                const deletedTransaction = transactions.find((transaction) => String(transaction.id) === String(id));
+                if (deletedTransaction) {
+                    setTransactions((current) => removeById(current, id));
+                    setAccounts((current) => applyTransactionToAccounts(current, deletedTransaction, "reverse"));
+                }
+            } else if (action === "deleteCategory") {
+                setCategories((current) => removeById(current, id));
+            } else if (action === "deleteTag") {
+                setTags((current) => removeById(current, id));
+            } else if (action === "deleteAccount") {
+                setAccounts((current) => removeById(current, id));
+            }
+
             setMessage(`${id} deleted.`);
         } catch (err) {
             setError(err.message);
@@ -140,6 +225,10 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         refreshCategories,
         refreshTags,
         refreshAccounts,
-        handleDelete
+        handleDelete,
+        saveCategoryLocally,
+        saveTagLocally,
+        saveAccountLocally,
+        saveTransactionLocally
     };
 }

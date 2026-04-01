@@ -7,7 +7,7 @@ import { slugify } from "../lib/format";
  * Manages the tag form: state and submit handler.
  * Calls refreshTags after a successful save so the list stays in sync.
  */
-export function useTagForm({ refreshTags, setError, setMessage, setIsSaving }) {
+export function useTagForm({ saveTagLocally, setError, setMessage, setIsSaving }) {
     const [tagForm, setTagForm] = useState(emptyTag);
 
     async function handleTagSubmit(event) {
@@ -22,8 +22,8 @@ export function useTagForm({ refreshTags, setError, setMessage, setIsSaving }) {
         };
 
         try {
-            await postData(tagForm.id ? "updateTag" : "addTag", payload);
-            await refreshTags();
+            const result = await postData(tagForm.id ? "updateTag" : "addTag", payload);
+            saveTagLocally({ ...payload, id: result.id ?? payload.id });
             setTagForm(emptyTag);
             setMessage(`Tag "${payload.name}" saved.`);
         } catch (err) {

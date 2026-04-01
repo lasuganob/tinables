@@ -13,21 +13,7 @@ export function AppFiltersProvider({ transactions, children }) {
     startDate: "",
     endDate: "",
   });
-  const [isFilterLoading, setIsFilterLoading] = useState(false);
   const [hasInitializedDefaultMonth, setHasInitializedDefaultMonth] = useState(false);
-
-  useEffect(() => {
-    setIsFilterLoading(true);
-    const timeoutId = window.setTimeout(() => setIsFilterLoading(false), 220);
-    return () => window.clearTimeout(timeoutId);
-  }, [
-    selectedUser,
-    dateFilter.mode,
-    dateFilter.month,
-    dateFilter.year,
-    dateFilter.startDate,
-    dateFilter.endDate,
-  ]);
 
   useEffect(() => {
     if (hasInitializedDefaultMonth || !transactions.length) return;
@@ -87,10 +73,10 @@ export function AppFiltersProvider({ transactions, children }) {
       toPickerValue,
       resetFilters,
       availableYears,
-      isFilterLoading,
+      isFilterLoading: false,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedUser, dateFilter, availableYears, isFilterLoading],
+    [selectedUser, dateFilter, availableYears],
   );
 
   return (

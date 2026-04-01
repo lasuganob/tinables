@@ -15,9 +15,8 @@ export function TransactionsPage() {
     users,
     accounts,
     isLoading,
-    refreshTransactions,
-    refreshAccounts,
     handleDelete,
+    saveTransactionLocally,
   } = useAppDataContext();
 
   const { isSaving, setError, setMessage, setIsSaving } = useAppFeedbackContext();
@@ -37,9 +36,8 @@ export function TransactionsPage() {
     selectedUser,
     users,
     transactions,
-    refreshTransactions,
-    refreshAccounts,
     accounts,
+    saveTransactionLocally,
     ...feedback,
   });
 
@@ -120,11 +118,10 @@ export function TransactionsPage() {
         return false;
       }
       if (!selectedUser) return true;
-      const owner =
-        users.find((u) => String(u.id) === String(account.user))?.name || "";
+      const owner = userNameById.get(String(account.user)) || "";
       return !account.user || owner === selectedUser;
     });
-  }, [accounts, selectedUser, transactionForm.account_id, transactionForm.transfer_account_id, users]);
+  }, [accounts, selectedUser, transactionForm.account_id, transactionForm.transfer_account_id, userNameById]);
 
   return (
     <Stack spacing={3}>

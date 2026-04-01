@@ -7,7 +7,7 @@ import { slugify } from "../lib/format";
  * Manages the category form: state and submit handler.
  * Calls refreshCategories after a successful save so the list stays in sync.
  */
-export function useCategoryForm({ refreshCategories, setError, setMessage, setIsSaving }) {
+export function useCategoryForm({ saveCategoryLocally, setError, setMessage, setIsSaving }) {
     const [categoryForm, setCategoryForm] = useState(emptyCategory);
 
     async function handleCategorySubmit(event) {
@@ -22,8 +22,8 @@ export function useCategoryForm({ refreshCategories, setError, setMessage, setIs
         };
 
         try {
-            await postData(categoryForm.id ? "updateCategory" : "addCategory", payload);
-            await refreshCategories();
+            const result = await postData(categoryForm.id ? "updateCategory" : "addCategory", payload);
+            saveCategoryLocally({ ...payload, id: result.id ?? payload.id });
             setCategoryForm(emptyCategory);
             setMessage(`Category "${payload.name}" saved.`);
         } catch (err) {

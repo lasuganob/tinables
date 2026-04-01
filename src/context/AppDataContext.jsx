@@ -24,6 +24,10 @@ export function AppDataProvider({ onTransactionsChange, children }) {
     refreshTags,
     refreshAccounts,
     handleDelete,
+    saveCategoryLocally,
+    saveTagLocally,
+    saveAccountLocally,
+    saveTransactionLocally,
   } = useAppData({ selectedUser, ...feedback });
 
   // Keep the filter-provider bridge in sync with the authoritative transactions list.
@@ -47,9 +51,30 @@ export function AppDataProvider({ onTransactionsChange, children }) {
       refreshTags,
       refreshAccounts,
       handleDelete,
+      saveCategoryLocally,
+      saveTagLocally,
+      saveAccountLocally,
+      saveTransactionLocally,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, categories, tags, users, accounts, accountTypes, isLoading],
+    [
+      transactions,
+      categories,
+      tags,
+      users,
+      accounts,
+      accountTypes,
+      isLoading,
+      refreshTransactions,
+      refreshCategories,
+      refreshTags,
+      refreshAccounts,
+      handleDelete,
+      saveCategoryLocally,
+      saveTagLocally,
+      saveAccountLocally,
+      saveTransactionLocally,
+    ],
   );
 
   const feedbackValue = useMemo(
