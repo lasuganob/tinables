@@ -98,14 +98,27 @@ export async function postData(action, payload) {
 }
 
 export async function loadBootstrapData(user, account) {
-  const [transactions, categories, tags, users, accounts, accountTypes] = await Promise.all([
+  const [transactions, categories, tags, users, accounts, accountTypes, salaryAllocations, salaryAllocationItems, upcomingPayments] = await Promise.all([
     fetchData("getTransactions", user ? { user } : {}),
     fetchData("getCategories"),
     fetchData("getTags"),
     fetchData("getUsers"),
     fetchData("getAccounts", account ? { account } : {}),
-    fetchData("getAccountTypes")
+    fetchData("getAccountTypes"),
+    fetchData("getSalaryAllocations"),
+    fetchData("getSalaryAllocationItems"),
+    fetchData("getUpcomingPayments")
   ]);
 
-  return { transactions, categories, tags, users, accounts, accountTypes };
+  return {
+    transactions,
+    categories,
+    tags,
+    users,
+    accounts,
+    accountTypes,
+    salaryAllocations,
+    salaryAllocationItems,
+    upcomingPayments
+  };
 }

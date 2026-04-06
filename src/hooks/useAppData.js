@@ -53,6 +53,39 @@ function normaliseAccountType(accountType) {
     };
 }
 
+function normaliseSalaryAllocation(allocation) {
+    return {
+        ...allocation,
+        id: cleanValue(allocation.id),
+        name: cleanValue(allocation.name),
+        user: cleanValue(allocation.user)
+    };
+}
+
+function normaliseSalaryAllocationItem(item) {
+    return {
+        ...item,
+        id: cleanValue(item.id),
+        allocation_id: cleanValue(item.allocation_id),
+        label: cleanValue(item.label),
+        percentage: Number(cleanValue(item.percentage) || 0)
+    };
+}
+
+function normaliseUpcomingPayment(payment) {
+    return {
+        ...payment,
+        id: cleanValue(payment.id),
+        title: cleanValue(payment.title),
+        due_date: cleanValue(payment.due_date),
+        amount: Number(cleanValue(payment.amount) || 0),
+        user: cleanValue(payment.user),
+        note: cleanValue(payment.note),
+        category_id: cleanValue(payment.category_id),
+        status: String(cleanValue(payment.status) || "scheduled").toLowerCase()
+    };
+}
+
 function upsertById(items, nextItem) {
     const nextId = String(nextItem.id);
     const index = items.findIndex((item) => String(item.id) === nextId);
@@ -110,6 +143,9 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
     const [users, setUsers] = useState([]);
     const [accounts, setAccounts] = useState([]);
     const [accountTypes, setAccountTypes] = useState([]);
+    const [salaryAllocations, setSalaryAllocations] = useState([]);
+    const [salaryAllocationItems, setSalaryAllocationItems] = useState([]);
+    const [upcomingPayments, setUpcomingPayments] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const hiddenAtRef = useRef(0);
     const lastResumeRefreshAtRef = useRef(0);
@@ -125,6 +161,9 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
             setUsers(data.users.map(normaliseUser));
             setAccounts(data.accounts.map(normaliseAccount));
             setAccountTypes(data.accountTypes.map(normaliseAccountType));
+            setSalaryAllocations((data.salaryAllocations || []).map(normaliseSalaryAllocation));
+            setSalaryAllocationItems((data.salaryAllocationItems || []).map(normaliseSalaryAllocationItem));
+            setUpcomingPayments((data.upcomingPayments || []).map(normaliseUpcomingPayment));
         } catch (err) {
             setError(err.message);
         } finally {
@@ -202,6 +241,18 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         setAccounts((await fetchData("getAccounts")).map(normaliseAccount));
     }
 
+    async function refreshSalaryAllocations() {
+        setSalaryAllocations((await fetchData("getSalaryAllocations")).map(normaliseSalaryAllocation));
+    }
+
+    async function refreshSalaryAllocationItems() {
+        setSalaryAllocationItems((await fetchData("getSalaryAllocationItems")).map(normaliseSalaryAllocationItem));
+    }
+
+    async function refreshUpcomingPayments() {
+        setUpcomingPayments((await fetchData("getUpcomingPayments")).map(normaliseUpcomingPayment));
+    }
+
     function saveCategoryLocally(category) {
         const normalised = normaliseCategory(category);
         setCategories((current) => upsertById(current, normalised));
@@ -237,6 +288,28 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         return normalised;
     }
 
+    function saveSalaryAllocationLocally(allocation) {
+        const normalised = normaliseSalaryAllocation(allocation);
+        setSalaryAllocations((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
+    function saveSalaryAllocationItemLocally(item) {
+        const normalised = normaliseSalaryAllocationItem(item);
+        setSalaryAllocationItems((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
+    function removeSalaryAllocationItemLocally(id) {
+        setSalaryAllocationItems((current) => removeById(current, id));
+    }
+
+    function saveUpcomingPaymentLocally(payment) {
+        const normalised = normaliseUpcomingPayment(payment);
+        setUpcomingPayments((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
     async function handleDelete(action, id) {
         setIsSaving(true);
         setError("");
@@ -257,6 +330,15 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
                 setTags((current) => removeById(current, id));
             } else if (action === "deleteAccount") {
                 setAccounts((current) => removeById(current, id));
+            } else if (action === "deleteSalaryAllocation") {
+                setSalaryAllocations((current) => removeById(current, id));
+                setSalaryAllocationItems((current) =>
+                    current.filter((item) => String(item.allocation_id) !== String(id))
+                );
+            } else if (action === "deleteSalaryAllocationItem") {
+                setSalaryAllocationItems((current) => removeById(current, id));
+            } else if (action === "deleteUpcomingPayment") {
+                setUpcomingPayments((current) => removeById(current, id));
             }
 
             setMessage(`${id} deleted.`);
@@ -276,15 +358,25 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         users,
         accounts,
         accountTypes,
+        salaryAllocations,
+        salaryAllocationItems,
+        upcomingPayments,
         isLoading,
         refreshTransactions,
         refreshCategories,
         refreshTags,
         refreshAccounts,
+        refreshSalaryAllocations,
+        refreshSalaryAllocationItems,
+        refreshUpcomingPayments,
         handleDelete,
         saveCategoryLocally,
         saveTagLocally,
         saveAccountLocally,
-        saveTransactionLocally
+        saveTransactionLocally,
+        saveSalaryAllocationLocally,
+        saveSalaryAllocationItemLocally,
+        removeSalaryAllocationItemLocally,
+        saveUpcomingPaymentLocally
     };
 }

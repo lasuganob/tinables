@@ -21,14 +21,16 @@ import ExpandMore from "@mui/icons-material/ExpandMore";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import SellRoundedIcon from "@mui/icons-material/SellRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import PieChartRoundedIcon from "@mui/icons-material/PieChartRounded";
 
 const DRAWER_WIDTH = 220;
 
 const NAV_ITEMS = [
   { label: "Dashboard", to: "/", icon: <DashboardRoundedIcon /> },
   { label: "Transactions", to: "/transactions", icon: <ReceiptLongRoundedIcon /> },
+  { label: "Salary Allocator", to: "/salary-allocator", icon: <PieChartRoundedIcon /> },
   { label: "Budgets & Goals", to: "/budgets", icon: <SavingsRoundedIcon /> },
-  { label: "Recurring Dues", to: "/recurring-dues", icon: <RepeatRoundedIcon /> },
+  { label: "Upcoming Payments", to: "/upcoming-payments", icon: <RepeatRoundedIcon /> },
   {
     label: "Managers",
     icon: <ManageAccountsRoundedIcon />,

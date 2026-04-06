@@ -38,7 +38,8 @@ export function RecentTransactionsSection({
     resetTransactionForm,
     handleDelete,
     toPickerValue,
-    visibleTransactions
+    visibleTransactions,
+    transactionEditorTrigger
 }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -65,6 +66,14 @@ export function RecentTransactionsSection({
             behavior: "smooth"
         });
     }, [showInlineTransactionEditor]);
+
+    useEffect(() => {
+        if (!transactionEditorTrigger) {
+            return;
+        }
+
+        setShowInlineTransactionEditor(true);
+    }, [transactionEditorTrigger]);
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -160,7 +169,7 @@ export function RecentTransactionsSection({
 
     async function submitInlineTransaction() {
         const saved = await handleTransactionSubmit();
-        if (saved) {
+        if (saved?.ok) {
             setShowInlineTransactionEditor(false);
         }
     }

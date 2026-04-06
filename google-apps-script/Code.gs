@@ -18,7 +18,7 @@ function getSheet(sheetName) {
 }
 
 function normaliseCellValue(header, value) {
-  if (header === "date" && value instanceof Date) {
+  if ((header === "date" || header === "due_date") && value instanceof Date) {
     return Utilities.formatDate(value, APP_TIME_ZONE, "yyyy-MM-dd");
   }
 
@@ -462,6 +462,49 @@ function getAccount(account) {
   return rows;
 }
 
+function getSalaryAllocations(user) {
+  var rows = getRows("salary_allocations");
+  if (user) {
+    rows = rows.filter(function (row) {
+      return String(row.user) === String(user);
+    });
+  }
+  return rows;
+}
+
+function getSalaryAllocationItems(allocationId) {
+  var rows = getRows("salary_allocation_items");
+  if (allocationId) {
+    rows = rows.filter(function (row) {
+      return String(row.allocation_id) === String(allocationId);
+    });
+  }
+  return rows;
+}
+
+function getUpcomingPayments(user) {
+  var rows = getRows("upcoming_payments");
+  if (user) {
+    rows = rows.filter(function (row) {
+      return String(row.user) === String(user);
+    });
+  }
+  return rows;
+}
+
+function markUpcomingPaymentPaid(id, status) {
+  var payment = getRowById("upcoming_payments", id);
+
+  if (!payment) {
+    throw new Error("Upcoming payment not found for id " + id);
+  }
+
+  return updateRow("upcoming_payments", {
+    id: id,
+    status: status || "paid"
+  });
+}
+
 function doGet(e) {
   try {
     var action = e.parameter.action;
@@ -486,6 +529,15 @@ function doGet(e) {
     }
     if (action === "getAccountById") {
       return jsonResponse(getAccount(e.parameter.account));
+    }
+    if (action === "getSalaryAllocations") {
+      return jsonResponse(getSalaryAllocations(e.parameter.user));
+    }
+    if (action === "getSalaryAllocationItems") {
+      return jsonResponse(getSalaryAllocationItems(e.parameter.allocation_id));
+    }
+    if (action === "getUpcomingPayments") {
+      return jsonResponse(getUpcomingPayments(e.parameter.user));
     }
 
     return jsonResponse({ error: "Invalid action" });
@@ -538,6 +590,36 @@ function doPost(e) {
     if (action === "deleteAccount") {
       validateAccountDeletion(payload.id);
       return jsonResponse(deleteRow("accounts", payload.id));
+    }
+    if (action === "addSalaryAllocation") {
+      return jsonResponse(addRow("salary_allocations", payload));
+    }
+    if (action === "updateSalaryAllocation") {
+      return jsonResponse(updateRow("salary_allocations", payload));
+    }
+    if (action === "deleteSalaryAllocation") {
+      return jsonResponse(deleteRow("salary_allocations", payload.id));
+    }
+    if (action === "addSalaryAllocationItem") {
+      return jsonResponse(addRow("salary_allocation_items", payload));
+    }
+    if (action === "updateSalaryAllocationItem") {
+      return jsonResponse(updateRow("salary_allocation_items", payload));
+    }
+    if (action === "deleteSalaryAllocationItem") {
+      return jsonResponse(deleteRow("salary_allocation_items", payload.id));
+    }
+    if (action === "addUpcomingPayment") {
+      return jsonResponse(addRow("upcoming_payments", payload));
+    }
+    if (action === "updateUpcomingPayment") {
+      return jsonResponse(updateRow("upcoming_payments", payload));
+    }
+    if (action === "deleteUpcomingPayment") {
+      return jsonResponse(deleteRow("upcoming_payments", payload.id));
+    }
+    if (action === "markUpcomingPaymentPaid") {
+      return jsonResponse(markUpcomingPaymentPaid(payload.id, payload.status));
     }
 
     return jsonResponse({ error: "Invalid action" });

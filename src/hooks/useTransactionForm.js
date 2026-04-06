@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { postData } from "../api/googleSheets";
 import { emptyTransaction } from "../constants/defaults";
 import { getTodayInAppTimeZone } from "../lib/format";
+import { isSalaryTransaction } from "../utils/salaryAllocator";
 
 /**
  * Manages the transaction form: state, default user initialisation, and submit handler.
@@ -86,7 +87,17 @@ function validateActiveAccounts(accounts, transactionForm, previousTransaction) 
     return "";
 }
 
-export function useTransactionForm({ selectedUser, users, accounts, transactions, saveTransactionLocally, setError, setMessage, setIsSaving }) {
+export function useTransactionForm({
+    selectedUser,
+    users,
+    accounts,
+    transactions,
+    categories,
+    saveTransactionLocally,
+    setError,
+    setMessage,
+    setIsSaving
+}) {
     const [transactionForm, setTransactionForm] = useState(emptyTransaction);
 
     // Once the user list is available, fill in the form's user field if it is still blank.
@@ -141,7 +152,7 @@ export function useTransactionForm({ selectedUser, users, accounts, transactions
             if (sourceBalance < requiredBalance) {
                 setError("Insufficient account balance for this transaction.");
                 setIsSaving(false);
-                return false;
+                return { ok: false };
             }
         }
 
@@ -153,20 +164,27 @@ export function useTransactionForm({ selectedUser, users, accounts, transactions
 
             if (inactiveAccountError) {
                 setError(inactiveAccountError);
-                return false;
+                return { ok: false };
             }
 
             const result = await postData(transactionForm.id ? "updateTransaction" : "addTransaction", payload);
-            saveTransactionLocally(
+            const savedTransaction = saveTransactionLocally(
                 { ...payload, id: result.id ?? payload.id },
                 previousTransaction
             );
             resetTransactionForm();
             setMessage(`Transaction ${result.id ?? payload.id} saved.`);
-            return true;
+            return {
+                ok: true,
+                transactionId: String(result.id ?? payload.id),
+                isSalaryTransaction: isSalaryTransaction(savedTransaction, categories),
+                salaryAmount: Number(savedTransaction.amount || 0),
+                salaryUser: String(savedTransaction.user || ""),
+                upcomingPaymentId: String(transactionForm.upcomingPaymentId || "")
+            };
         } catch (err) {
             setError(err.message);
-            return false;
+            return { ok: false };
         } finally {
             setIsSaving(false);
         }

@@ -2,9 +2,9 @@ import { Alert } from "@mui/material";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 
-export function PieChart({ data }) {
+export function PieChart({ data, seriesName = "Expenses", emptyMessage = "No data available." }) {
   if (!data.length) {
-    return <Alert severity="info">No expense data available.</Alert>;
+    return <Alert severity="info">{emptyMessage}</Alert>;
   }
 
   const options = {
@@ -34,7 +34,7 @@ export function PieChart({ data }) {
     },
     series: [
       {
-        name: "Expenses",
+        name: seriesName,
         colorByPoint: true,
         data: data.map((item) => ({
           name: item.name,

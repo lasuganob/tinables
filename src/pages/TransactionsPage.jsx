@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { Stack, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { Button, Dialog, DialogActions, DialogContent, Stack, Typography } from "@mui/material";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAppDataContext } from "../context/AppDataContext";
 import { useAppFeedbackContext } from "../context/AppDataContext";
 import { useAppFiltersContext } from "../context/AppFiltersContext";
@@ -7,6 +8,8 @@ import { useTransactionForm } from "../hooks/useTransactionForm";
 import { fallbackAccountTypes } from "../constants/defaults";
 import { formatCurrency, formatDate } from "../lib/format";
 import { RecentTransactionsSection } from "../sections/RecentTransactionsSection";
+import { postData } from "../api/googleSheets";
+import { DialogTitleWithClose } from "../components/DialogTitleWithClose";
 
 export function TransactionsPage() {
   const {
@@ -16,9 +19,11 @@ export function TransactionsPage() {
     users,
     accounts,
     accountTypes,
+    upcomingPayments,
     isLoading,
     handleDelete,
     saveTransactionLocally,
+    saveUpcomingPaymentLocally,
   } = useAppDataContext();
 
   const { isSaving, setError, setMessage, setIsSaving } = useAppFeedbackContext();
@@ -26,6 +31,11 @@ export function TransactionsPage() {
     useAppFiltersContext();
 
   const feedback = { setError, setMessage, setIsSaving };
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [showSalaryAllocatorDialog, setShowSalaryAllocatorDialog] = useState(false);
+  const [pendingSalaryAllocatorPayload, setPendingSalaryAllocatorPayload] = useState(null);
+  const [transactionEditorTrigger, setTransactionEditorTrigger] = useState(0);
 
   const isViewLoading = isLoading || isFilterLoading;
 
@@ -39,9 +49,32 @@ export function TransactionsPage() {
     users,
     transactions,
     accounts,
+    categories,
     saveTransactionLocally,
     ...feedback,
   });
+
+  useEffect(() => {
+    const prefill = location.state?.transactionPrefill;
+
+    if (!prefill) {
+      return;
+    }
+
+    setTransactionForm((current) => ({
+      ...current,
+      ...prefill,
+      amount: String(prefill.amount ?? current.amount ?? ""),
+      category_id: String(prefill.category_id ?? current.category_id ?? ""),
+      account_id: String(prefill.account_id ?? current.account_id ?? ""),
+      user: String(prefill.user ?? current.user ?? ""),
+      tags: Array.isArray(prefill.tags) ? prefill.tags : current.tags,
+      upcomingPaymentId: String(prefill.upcomingPaymentId ?? "")
+    }));
+    setTransactionEditorTrigger((current) => current + 1);
+
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate, setTransactionForm]);
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((c) => [String(c.id), c.name])),
@@ -130,6 +163,45 @@ export function TransactionsPage() {
     [accountTypes],
   );
 
+  async function handleTransactionSubmitWithSideEffects() {
+    const result = await handleTransactionSubmit();
+
+    if (!result?.ok) {
+      return result;
+    }
+
+    if (result.upcomingPaymentId) {
+      try {
+        await postData("markUpcomingPaymentPaid", {
+          id: result.upcomingPaymentId,
+          status: "paid"
+        });
+        const existingPayment = upcomingPayments.find(
+          (item) => String(item.id) === String(result.upcomingPaymentId)
+        );
+        if (existingPayment) {
+          saveUpcomingPaymentLocally({
+            ...existingPayment,
+            status: "paid"
+          });
+        }
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    if (result.isSalaryTransaction) {
+      setPendingSalaryAllocatorPayload({
+        amount: result.salaryAmount,
+        user: result.salaryUser,
+        transactionId: result.transactionId
+      });
+      setShowSalaryAllocatorDialog(true);
+    }
+
+    return result;
+  }
+
   return (
     <Stack spacing={3}>
       <Stack spacing={0.5}>
@@ -157,13 +229,58 @@ export function TransactionsPage() {
         users={users}
         transactionFormTagIds={transactionFormTagIds}
         tags={tags}
-        handleTransactionSubmit={handleTransactionSubmit}
+        handleTransactionSubmit={handleTransactionSubmitWithSideEffects}
         resetTransactionForm={resetTransactionForm}
         handleDelete={handleDelete}
         toPickerValue={toPickerValue}
         visibleTransactions={visibleTransactions}
         maxId={maxTransactionId}
+        transactionEditorTrigger={transactionEditorTrigger}
       />
+
+      <Dialog
+        open={showSalaryAllocatorDialog}
+        onClose={() => setShowSalaryAllocatorDialog(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitleWithClose onClose={() => setShowSalaryAllocatorDialog(false)}>
+          Salary Added
+        </DialogTitleWithClose>
+        <DialogContent>
+          <Typography>
+            You added your salary. View breakdown?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSalaryAllocatorDialog(false)}>
+            No
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setShowSalaryAllocatorDialog(false);
+              navigate("/salary-allocator", {
+                state: {
+                  salaryAllocatorInput: {
+                    amount: pendingSalaryAllocatorPayload?.amount || 0,
+                    user: pendingSalaryAllocatorPayload?.user || "",
+                    sourceTransactionId: pendingSalaryAllocatorPayload?.transactionId || ""
+                  }
+                }
+              });
+            }}
+            sx={{
+              bgcolor: "#4a6555",
+              "&:hover": {
+                bgcolor: "#3f594b"
+              }
+            }}
+          >
+            Yes
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

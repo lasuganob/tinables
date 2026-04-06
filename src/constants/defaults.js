@@ -11,7 +11,8 @@ export const emptyTransaction = {
     amount: "",
     note: "",
     tags: [],
-    user: ""
+    user: "",
+    upcomingPaymentId: ""
 };
 
 export const emptyCategory = {
