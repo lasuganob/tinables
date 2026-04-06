@@ -1,4 +1,5 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, DialogContentText } from "@mui/material";
+import { DialogTitleWithClose } from "./DialogTitleWithClose";
 
 export function ConfirmDeleteDialog({
     open,
@@ -11,7 +12,7 @@ export function ConfirmDeleteDialog({
 }) {
     return (
         <Dialog open={open} onClose={isSaving ? undefined : onCancel} fullWidth maxWidth="xs">
-            <DialogTitle>{title}</DialogTitle>
+            <DialogTitleWithClose onClose={onCancel} disabled={isSaving}>{title}</DialogTitleWithClose>
             <DialogContent>
                 <DialogContentText>{message}</DialogContentText>
             </DialogContent>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Box, Button, Chip, FormControl,
     IconButton, InputLabel, ListItemIcon, ListItemText, Menu, MenuItem,
@@ -49,10 +49,22 @@ export function RecentTransactionsSection({
     const [activeTransaction, setActiveTransaction] = useState(null);
     const [showInlineTransactionEditor, setShowInlineTransactionEditor] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState("");
+    const [isTagsMenuOpen, setIsTagsMenuOpen] = useState(false);
     const userNameById = useMemo(
         () => new Map(users.map((user) => [String(user.id), user.name])),
         [users]
     );
+
+    useEffect(() => {
+        if (!showInlineTransactionEditor) {
+            return;
+        }
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+    }, [showInlineTransactionEditor]);
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -78,9 +90,17 @@ export function RecentTransactionsSection({
                     ? Number(left.amount) - Number(right.amount)
                     : Number(right.amount) - Number(left.amount);
             }
+            const dateDifference = parseDateValue(left.date) - parseDateValue(right.date);
+            if (dateDifference !== 0) {
+                return transactionSort.direction === "asc"
+                    ? dateDifference
+                    : -dateDifference;
+            }
+
+            const idDifference = Number(left.id) - Number(right.id);
             return transactionSort.direction === "asc"
-                ? parseDateValue(left.date) - parseDateValue(right.date)
-                : parseDateValue(right.date) - parseDateValue(left.date);
+                ? idDifference
+                : -idDifference;
         });
         return items;
     }, [visibleTransactions, transactionSort, categoryNameById]);
@@ -368,9 +388,24 @@ export function RecentTransactionsSection({
                     <InputLabel>Tags</InputLabel>
                     <Select
                         multiple
+                        open={isTagsMenuOpen}
+                        onOpen={() => setIsTagsMenuOpen(true)}
+                        onClose={() => setIsTagsMenuOpen(false)}
                         value={transactionFormTagIds}
                         onChange={(event) => setTransactionForm({ ...transactionForm, tags: event.target.value })}
                         input={<OutlinedInput label="Tags" />}
+                        MenuProps={{
+                            PaperProps: {
+                                sx: {
+                                    maxHeight: 320
+                                }
+                            },
+                            MenuListProps: {
+                                sx: {
+                                    pb: 0
+                                }
+                            }
+                        }}
                         renderValue={(selected) => (
                             <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
                                 {selected.map((value) => (
@@ -378,10 +413,24 @@ export function RecentTransactionsSection({
                                 ))}
                             </Box>
                         )}
-                    >
+                        >
                         {tags.map((tag) => (
                             <MenuItem key={tag.id} value={String(tag.id)}>{tag.name}</MenuItem>
                         ))}
+                        <Box sx={{ position: "sticky", bottom: 0, bgcolor: "background.paper", zIndex: 1, p: 1, borderTop: "1px solid", borderColor: "divider" }}>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                sx={{ minWidth: 88 }}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setIsTagsMenuOpen(false);
+                                }}
+                            >
+                                OK
+                            </Button>
+                        </Box>
                     </Select>
                 </FormControl>
                 <TextField

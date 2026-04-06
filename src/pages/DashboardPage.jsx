@@ -23,6 +23,7 @@ export function DashboardPage() {
     tags,
     users,
     accounts,
+    accountTypes,
     isLoading,
   } = useAppDataContext();
 
@@ -204,6 +205,7 @@ export function DashboardPage() {
         incomeBreakdown={incomeBreakdown}
         topExpenseCategories={topExpenseCategories}
         users={users}
+        accountTypes={accountTypes}
       />
 
       <ChartsSection

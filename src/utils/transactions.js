@@ -37,7 +37,8 @@ export function incomeByAccount(accounts) {
         id: String(account.id),
         name: account.name,
         value: Number(account.balance || 0),
-        user: account.user
+        user: account.user,
+        type: account.type
     }));
 
     return accountItems.sort((left, right) => right.value - left.value);

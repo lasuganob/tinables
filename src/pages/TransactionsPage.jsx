@@ -137,7 +137,7 @@ export function TransactionsPage() {
           Transactions
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: "0.85rem", sm: "0.875rem" } }}>
-          Track your income and expenses
+          Track your income, expenses, and transfers
         </Typography>
       </Stack>
 

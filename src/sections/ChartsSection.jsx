@@ -4,7 +4,6 @@ import {
   Chip,
   Dialog,
   DialogContent,
-  DialogTitle,
   FormControl,
   IconButton,
   InputLabel,
@@ -20,6 +19,7 @@ import {
 import OpenInFullRoundedIcon from "@mui/icons-material/OpenInFullRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import DonutLargeRoundedIcon from "@mui/icons-material/DonutLargeRounded";
+import { DialogTitleWithClose } from "../components/DialogTitleWithClose";
 
 const LineChart = lazy(() =>
   import("../components/LineChart").then((module) => ({ default: module.LineChart }))
@@ -139,7 +139,9 @@ export function ChartsSection({
         fullWidth
         maxWidth="lg"
       >
-        <DialogTitle>Cashflow Timeline</DialogTitle>
+        <DialogTitleWithClose onClose={() => setActiveModal("")}>
+          Cashflow Timeline
+        </DialogTitleWithClose>
         <DialogContent dividers>
           {isViewLoading ? (
             <Skeleton variant="rounded" height={360} />
@@ -232,7 +234,9 @@ export function ChartsSection({
         fullWidth
         maxWidth="lg"
       >
-        <DialogTitle>Expense Breakdown</DialogTitle>
+        <DialogTitleWithClose onClose={() => setActiveModal("")}>
+          Expense Breakdown
+        </DialogTitleWithClose>
         <DialogContent dividers>
           {isViewLoading ? (
             <Skeleton variant="rounded" height={360} />
