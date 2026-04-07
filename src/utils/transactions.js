@@ -16,6 +16,7 @@ export function normaliseTransaction(item) {
         salary_allocation_item_id: item.salary_allocation_item_id
             ? String(item.salary_allocation_item_id)
             : "",
+        is_salary_allocation_base: Number(item.is_salary_allocation_base || 0),
         tags: Array.isArray(item.tags)
             ? item.tags
             : String(item.tags || "")

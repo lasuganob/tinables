@@ -28,6 +28,12 @@ import {
     validateAllocationItems
 } from "../utils/salaryAllocator";
 
+function isAllocationBaseTransfer(transaction) {
+    return String(transaction?.type || "").toLowerCase() === "transfer"
+        && Number(transaction?.is_salary_allocation_base || 0) === 1
+        && String(transaction?.source_salary_transaction_id || "");
+}
+
 export function SalaryAllocatorPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -63,24 +69,42 @@ export function SalaryAllocatorPage() {
         setSelectedSourceTransactionId(String(input.sourceTransactionId || ""));
     }, [location.state, selectedUser, users]);
 
-    const salaryTransactions = useMemo(() => {
-        const filteredTransactions = transactions.filter((transaction) => {
+    const allocationSourceOptions = useMemo(() => {
+        const linkedTransferBySalaryId = new Map();
+
+        transactions.forEach((transaction) => {
+            if (
+                String(transaction.user || "") === String(selectedUser || "")
+                && isAllocationBaseTransfer(transaction)
+            ) {
+                linkedTransferBySalaryId.set(String(transaction.source_salary_transaction_id), transaction);
+            }
+        });
+
+        const sources = transactions.filter((transaction) => {
             if (String(transaction.user || "") !== String(selectedUser || "")) {
                 return false;
             }
 
-            return isSalaryTransaction(transaction, categories);
+            if (isAllocationBaseTransfer(transaction)) {
+                return true;
+            }
+
+            if (!isSalaryTransaction(transaction, categories)) {
+                return false;
+            }
+
+            return !linkedTransferBySalaryId.has(String(transaction.id));
         });
+
         const selectedTransaction = transactions.find(
-            (transaction) =>
-                String(transaction.id) === String(selectedSourceTransactionId)
-                && isSalaryTransaction(transaction, categories)
+            (transaction) => String(transaction.id) === String(selectedSourceTransactionId)
         );
 
         return (selectedTransaction
-            && !filteredTransactions.some((transaction) => String(transaction.id) === String(selectedTransaction.id))
-            ? [...filteredTransactions, selectedTransaction]
-            : filteredTransactions)
+            && !sources.some((transaction) => String(transaction.id) === String(selectedTransaction.id))
+            ? [...sources, selectedTransaction]
+            : sources)
             .sort((left, right) => {
                 if (String(left.date || "") !== String(right.date || "")) {
                     return String(right.date || "").localeCompare(String(left.date || ""));
@@ -142,8 +166,8 @@ export function SalaryAllocatorPage() {
     );
 
     const sourceTransaction = useMemo(
-        () => salaryTransactions.find((transaction) => String(transaction.id) === String(selectedSourceTransactionId)) || null,
-        [salaryTransactions, selectedSourceTransactionId]
+        () => allocationSourceOptions.find((transaction) => String(transaction.id) === String(selectedSourceTransactionId)) || null,
+        [allocationSourceOptions, selectedSourceTransactionId]
     );
 
     const breakdownWithAllocation = useMemo(
@@ -224,7 +248,7 @@ export function SalaryAllocatorPage() {
                                     const nextTransactionId = String(event.target.value || "");
                                     setSelectedSourceTransactionId(nextTransactionId);
 
-                                    const nextTransaction = salaryTransactions.find(
+                                    const nextTransaction = allocationSourceOptions.find(
                                         (transaction) => String(transaction.id) === nextTransactionId
                                     );
 
@@ -234,9 +258,9 @@ export function SalaryAllocatorPage() {
                                 }}
                             >
                                 <MenuItem value="">Calculator only</MenuItem>
-                                {salaryTransactions.map((transaction) => (
+                                {allocationSourceOptions.map((transaction) => (
                                     <MenuItem key={transaction.id} value={String(transaction.id)}>
-                                        {`${transaction.date} • ${formatCurrency(transaction.amount)} • ${accountNameById.get(String(transaction.account_id)) || "Unknown account"} • #${transaction.id}`}
+                                        {`${String(transaction.type || "").toLowerCase() === "transfer" ? "Transfer" : "Salary"} • ${transaction.date} • ${formatCurrency(transaction.amount)} • ${accountNameById.get(String(transaction.account_id)) || "Unknown account"} • #${transaction.id}`}
                                     </MenuItem>
                                 ))}
                             </Select>
@@ -265,7 +289,7 @@ export function SalaryAllocatorPage() {
                     ) : null}
                     {sourceTransaction ? (
                         <Alert severity="success">
-                            Linked to salary transaction #{sourceTransaction.id} from {sourceTransaction.date} in {accountNameById.get(String(sourceTransaction.account_id)) || "Unknown account"}.
+                            Linked to {String(sourceTransaction.type || "").toLowerCase() === "transfer" ? "transfer" : "salary"} transaction #{sourceTransaction.id} from {sourceTransaction.date} in {accountNameById.get(String(sourceTransaction.account_id)) || "Unknown account"}.
                         </Alert>
                     ) : (
                         <Alert severity="info">

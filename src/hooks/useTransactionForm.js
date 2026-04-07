@@ -142,10 +142,19 @@ export function useTransactionForm({
             salary_allocation_item_id: transactionForm.salary_allocation_item_id
                 ? String(transactionForm.salary_allocation_item_id)
                 : "",
+            is_salary_allocation_base: Number(transactionForm.is_salary_allocation_base || 0),
             tags: transactionForm.tags.length <= 1
                 ? String(transactionForm.tags[0] || "")
                 : transactionForm.tags.join(",")
         };
+
+        if (payload.type !== "transfer") {
+            payload.is_salary_allocation_base = 0;
+        }
+
+        if (payload.type === "income") {
+            payload.salary_allocation_item_id = "";
+        }
 
         if (payload.type === "expense" || payload.type === "transfer") {
             const effectiveBalances = getEffectiveBalances(accounts, transactions, transactionForm);
@@ -184,6 +193,8 @@ export function useTransactionForm({
                 ok: true,
                 transactionId: String(result.id ?? payload.id),
                 isSalaryTransaction: isSalaryTransaction(savedTransaction, categories),
+                isSalaryAllocationBase: String(savedTransaction.type || "").toLowerCase() === "transfer"
+                    && Number(savedTransaction.is_salary_allocation_base || 0) === 1,
                 salaryAmount: Number(savedTransaction.amount || 0),
                 salaryUser: String(savedTransaction.user || ""),
                 upcomingPaymentId: String(transactionForm.upcomingPaymentId || "")

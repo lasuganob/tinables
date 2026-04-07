@@ -332,6 +332,29 @@ function validateSalaryTransactionDeletion(id) {
   }
 }
 
+function validateAllocationSourceMetadata(transaction) {
+  var isAllocationBase = Number(transaction.is_salary_allocation_base || 0) === 1;
+  var sourceTransactionId = String(transaction.source_salary_transaction_id || "");
+
+  if (!isAllocationBase) {
+    return;
+  }
+
+  if (String(transaction.type || "").toLowerCase() !== "transfer") {
+    throw new Error("Only transfer transactions can be marked as an allocation base.");
+  }
+
+  if (!sourceTransactionId) {
+    throw new Error("Select the salary income linked to this allocation-base transfer.");
+  }
+
+  var sourceTransaction = getRowById("transactions", sourceTransactionId);
+
+  if (!sourceTransaction || !isSalaryTransactionRow(sourceTransaction)) {
+    throw new Error("Allocation-base transfers must reference a valid salary income transaction.");
+  }
+}
+
 function getAccountBalance(accountRowsById, accountId) {
   if (!accountId) {
     return 0;
@@ -446,6 +469,7 @@ function updateAccountBalancesForTransaction(transaction, direction) {
 function addTransaction(payload) {
   validateTransactionAccountsActive(payload, null);
   validateSufficientFunds(payload);
+  validateAllocationSourceMetadata(payload);
   var result = addRow("transactions", payload);
   var storedTransaction = Object.assign({}, payload, { id: result.id });
   updateAccountBalancesForTransaction(storedTransaction, "apply");
@@ -461,6 +485,7 @@ function updateTransaction(payload) {
 
   validateTransactionAccountsActive(payload, previousTransaction);
   validateSufficientFunds(payload, previousTransaction);
+  validateAllocationSourceMetadata(Object.assign({}, previousTransaction, payload));
   validateSalaryTransactionReferencesOnUpdate(
     Object.assign({}, previousTransaction, payload),
     previousTransaction

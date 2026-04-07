@@ -69,6 +69,7 @@ export function TransactionsPage() {
       account_id: String(prefill.account_id ?? current.account_id ?? ""),
       source_salary_transaction_id: String(prefill.source_salary_transaction_id ?? ""),
       salary_allocation_item_id: String(prefill.salary_allocation_item_id ?? ""),
+      is_salary_allocation_base: Number(prefill.is_salary_allocation_base ?? 0),
       user: String(prefill.user ?? current.user ?? ""),
       tags: Array.isArray(prefill.tags) ? prefill.tags : current.tags,
       upcomingPaymentId: String(prefill.upcomingPaymentId ?? "")
@@ -192,7 +193,7 @@ export function TransactionsPage() {
       }
     }
 
-    if (result.isSalaryTransaction) {
+    if (result.isSalaryTransaction || result.isSalaryAllocationBase) {
       setPendingSalaryAllocatorPayload({
         amount: result.salaryAmount,
         user: result.salaryUser,
@@ -236,6 +237,8 @@ export function TransactionsPage() {
         handleDelete={handleDelete}
         toPickerValue={toPickerValue}
         visibleTransactions={visibleTransactions}
+        allTransactions={transactions}
+        allCategories={categories}
         maxId={maxTransactionId}
         transactionEditorTrigger={transactionEditorTrigger}
       />

@@ -14,7 +14,8 @@ export const emptyTransaction = {
     user: "",
     upcomingPaymentId: "",
     source_salary_transaction_id: "",
-    salary_allocation_item_id: ""
+    salary_allocation_item_id: "",
+    is_salary_allocation_base: 0
 };
 
 export const emptyCategory = {
