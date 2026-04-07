@@ -30,7 +30,7 @@ const NAV_ITEMS = [
   { label: "Transactions", to: "/transactions", icon: <ReceiptLongRoundedIcon /> },
   { label: "Salary Allocator", to: "/salary-allocator", icon: <PieChartRoundedIcon /> },
   { label: "Budgets & Goals", to: "/budgets", icon: <SavingsRoundedIcon /> },
-  { label: "Upcoming Payments", to: "/upcoming-payments", icon: <RepeatRoundedIcon /> },
+  { label: "Upcoming Dues", to: "/upcoming-dues", icon: <RepeatRoundedIcon /> },
   {
     label: "Managers",
     icon: <ManageAccountsRoundedIcon />,

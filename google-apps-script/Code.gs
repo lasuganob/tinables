@@ -195,6 +195,25 @@ function findTransactionsReferencingCategory(categoryId) {
   });
 }
 
+function findTransactionsAllocatedFromSalary(transactionId) {
+  return getRows("transactions").filter(function(row) {
+    return String(row.source_salary_transaction_id || "") === String(transactionId || "");
+  });
+}
+
+function isSalaryTransactionRow(transaction) {
+  if (String(transaction.type || "").toLowerCase() !== "income") {
+    return false;
+  }
+
+  var categories = getRows("categories");
+  var category = categories.find(function(row) {
+    return String(row.id) === String(transaction.category_id || "");
+  });
+
+  return String(category && category.name || "").trim().toLowerCase() === "salary";
+}
+
 function parseTransactionTags(value) {
   if (Array.isArray(value)) {
     return value.map(function(tag) {
@@ -292,6 +311,24 @@ function validateTagDeletion(id) {
 
   if (findTransactionsReferencingTag(id).length) {
     throw new Error("Tag cannot be deleted because it is used by transactions.");
+  }
+}
+
+function validateSalaryTransactionReferencesOnUpdate(nextTransaction, previousTransaction) {
+  var linkedTransactions = findTransactionsAllocatedFromSalary(previousTransaction.id);
+
+  if (!linkedTransactions.length) {
+    return;
+  }
+
+  if (!isSalaryTransactionRow(nextTransaction)) {
+    throw new Error("This salary transaction has linked allocations and cannot be changed to a non-salary transaction.");
+  }
+}
+
+function validateSalaryTransactionDeletion(id) {
+  if (findTransactionsAllocatedFromSalary(id).length) {
+    throw new Error("This salary transaction has linked allocation transactions and cannot be deleted.");
   }
 }
 
@@ -424,6 +461,10 @@ function updateTransaction(payload) {
 
   validateTransactionAccountsActive(payload, previousTransaction);
   validateSufficientFunds(payload, previousTransaction);
+  validateSalaryTransactionReferencesOnUpdate(
+    Object.assign({}, previousTransaction, payload),
+    previousTransaction
+  );
   updateAccountBalancesForTransaction(previousTransaction, "reverse");
   var result = updateRow("transactions", payload);
   var nextTransaction = Object.assign({}, previousTransaction, payload);
@@ -438,6 +479,7 @@ function deleteTransaction(id) {
     throw new Error("Transaction not found for id " + id);
   }
 
+  validateSalaryTransactionDeletion(id);
   updateAccountBalancesForTransaction(existingTransaction, "reverse");
   return deleteRow("transactions", id);
 }

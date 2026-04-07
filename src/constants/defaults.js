@@ -12,7 +12,9 @@ export const emptyTransaction = {
     note: "",
     tags: [],
     user: "",
-    upcomingPaymentId: ""
+    upcomingPaymentId: "",
+    source_salary_transaction_id: "",
+    salary_allocation_item_id: ""
 };
 
 export const emptyCategory = {

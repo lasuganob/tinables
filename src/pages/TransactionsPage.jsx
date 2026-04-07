@@ -67,6 +67,8 @@ export function TransactionsPage() {
       amount: String(prefill.amount ?? current.amount ?? ""),
       category_id: String(prefill.category_id ?? current.category_id ?? ""),
       account_id: String(prefill.account_id ?? current.account_id ?? ""),
+      source_salary_transaction_id: String(prefill.source_salary_transaction_id ?? ""),
+      salary_allocation_item_id: String(prefill.salary_allocation_item_id ?? ""),
       user: String(prefill.user ?? current.user ?? ""),
       tags: Array.isArray(prefill.tags) ? prefill.tags : current.tags,
       upcomingPaymentId: String(prefill.upcomingPaymentId ?? "")

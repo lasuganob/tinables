@@ -10,6 +10,12 @@ export function normaliseTransaction(item) {
         transfer_fee: Number(item.transfer_fee || 0),
         account_id: item.account_id ? String(item.account_id) : "",
         transfer_account_id: item.transfer_account_id ? String(item.transfer_account_id) : "",
+        source_salary_transaction_id: item.source_salary_transaction_id
+            ? String(item.source_salary_transaction_id)
+            : "",
+        salary_allocation_item_id: item.salary_allocation_item_id
+            ? String(item.salary_allocation_item_id)
+            : "",
         tags: Array.isArray(item.tags)
             ? item.tags
             : String(item.tags || "")

@@ -136,6 +136,12 @@ export function useTransactionForm({
             account_id: transactionForm.account_id ? String(transactionForm.account_id) : "",
             transfer_account_id: transactionForm.transfer_account_id ? String(transactionForm.transfer_account_id) : "",
             category_id: transactionForm.type === "transfer" ? "" : transactionForm.category_id,
+            source_salary_transaction_id: transactionForm.source_salary_transaction_id
+                ? String(transactionForm.source_salary_transaction_id)
+                : "",
+            salary_allocation_item_id: transactionForm.salary_allocation_item_id
+                ? String(transactionForm.salary_allocation_item_id)
+                : "",
             tags: transactionForm.tags.length <= 1
                 ? String(transactionForm.tags[0] || "")
                 : transactionForm.tags.join(",")

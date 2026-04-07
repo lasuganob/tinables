@@ -75,3 +75,14 @@ export function toPieChartData(breakdown) {
         value: Number(item.amount || 0)
     }));
 }
+
+export function getAllocatedAmountForItem(transactions, sourceTransactionId, allocationItemId) {
+    return transactions
+        .filter((transaction) =>
+            String(transaction.source_salary_transaction_id || "") === String(sourceTransactionId || "")
+            && String(transaction.salary_allocation_item_id || "") === String(allocationItemId || "")
+            && String(transaction.id || "") !== String(sourceTransactionId || "")
+            && String(transaction.type || "").toLowerCase() !== "income"
+        )
+        .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+}

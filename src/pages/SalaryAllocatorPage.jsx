@@ -4,7 +4,6 @@ import {
     Box,
     Button,
     Card,
-    Chip,
     FormControl,
     InputLabel,
     MenuItem,
@@ -14,24 +13,30 @@ import {
     TextField,
     Typography
 } from "@mui/material";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { PieChart } from "../components/PieChart";
 import { EditSalaryAllocationsDialog } from "../components/EditSalaryAllocationsDialog";
 import { useAppDataContext, useAppFeedbackContext } from "../context/AppDataContext";
 import { formatCurrency } from "../lib/format";
 import {
     computeSalaryBreakdown,
+    getAllocatedAmountForItem,
     getAllocationItems,
     getDefaultAllocationForUser,
+    isSalaryTransaction,
     toPieChartData,
     validateAllocationItems
 } from "../utils/salaryAllocator";
 
 export function SalaryAllocatorPage() {
     const location = useLocation();
+    const navigate = useNavigate();
     const {
         salaryAllocations,
         salaryAllocationItems,
+        transactions,
+        categories,
+        accounts,
         users,
         saveSalaryAllocationLocally,
         saveSalaryAllocationItemLocally,
@@ -41,6 +46,7 @@ export function SalaryAllocatorPage() {
     const [selectedUser, setSelectedUser] = useState("");
     const [salaryAmount, setSalaryAmount] = useState("");
     const [selectedAllocationId, setSelectedAllocationId] = useState("");
+    const [selectedSourceTransactionId, setSelectedSourceTransactionId] = useState("");
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
     useEffect(() => {
@@ -54,7 +60,35 @@ export function SalaryAllocatorPage() {
 
         setSelectedUser(String(input.user || users[0]?.name || ""));
         setSalaryAmount(String(input.amount ?? ""));
+        setSelectedSourceTransactionId(String(input.sourceTransactionId || ""));
     }, [location.state, selectedUser, users]);
+
+    const salaryTransactions = useMemo(() => {
+        const filteredTransactions = transactions.filter((transaction) => {
+            if (String(transaction.user || "") !== String(selectedUser || "")) {
+                return false;
+            }
+
+            return isSalaryTransaction(transaction, categories);
+        });
+        const selectedTransaction = transactions.find(
+            (transaction) =>
+                String(transaction.id) === String(selectedSourceTransactionId)
+                && isSalaryTransaction(transaction, categories)
+        );
+
+        return (selectedTransaction
+            && !filteredTransactions.some((transaction) => String(transaction.id) === String(selectedTransaction.id))
+            ? [...filteredTransactions, selectedTransaction]
+            : filteredTransactions)
+            .sort((left, right) => {
+                if (String(left.date || "") !== String(right.date || "")) {
+                    return String(right.date || "").localeCompare(String(left.date || ""));
+                }
+
+                return Number(right.id || 0) - Number(left.id || 0);
+            });
+    }, [categories, selectedSourceTransactionId, selectedUser, transactions]);
 
     const userAllocations = useMemo(
         () => salaryAllocations
@@ -102,6 +136,31 @@ export function SalaryAllocatorPage() {
 
     const pieData = useMemo(() => toPieChartData(breakdown), [breakdown]);
 
+    const accountNameById = useMemo(
+        () => new Map(accounts.map((account) => [String(account.id), account.name])),
+        [accounts]
+    );
+
+    const sourceTransaction = useMemo(
+        () => salaryTransactions.find((transaction) => String(transaction.id) === String(selectedSourceTransactionId)) || null,
+        [salaryTransactions, selectedSourceTransactionId]
+    );
+
+    const breakdownWithAllocation = useMemo(
+        () => breakdown.map((item) => {
+            const allocatedAmount = selectedSourceTransactionId
+                ? Number(getAllocatedAmountForItem(transactions, selectedSourceTransactionId, item.id).toFixed(2))
+                : 0;
+
+            return {
+                ...item,
+                allocatedAmount,
+                remainingAmount: Number(Math.max(item.amount - allocatedAmount, 0).toFixed(2))
+            };
+        }),
+        [breakdown, selectedSourceTransactionId, transactions]
+    );
+
     return (
         <Stack spacing={3}>
             <Stack spacing={0.5}>
@@ -119,7 +178,7 @@ export function SalaryAllocatorPage() {
                         sx={{
                             display: "grid",
                             gap: 2,
-                            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr auto" },
+                            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr auto" },
                             alignItems: "end"
                         }}
                     >
@@ -145,14 +204,40 @@ export function SalaryAllocatorPage() {
                             fullWidth
                         />
                         <FormControl fullWidth size="small" disabled={!userAllocations.length}>
-                            <InputLabel>Allocation Set</InputLabel>
+                            <InputLabel>Allocation Preset</InputLabel>
                             <Select
-                                label="Allocation Set"
+                                label="Allocation Preset"
                                 value={selectedAllocationId}
                                 onChange={(event) => setSelectedAllocationId(event.target.value)}
                             >
                                 {userAllocations.map((allocation) => (
                                     <MenuItem key={allocation.id} value={String(allocation.id)}>{allocation.name}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Referenced Salary</InputLabel>
+                            <Select
+                                label="Referenced Salary"
+                                value={selectedSourceTransactionId}
+                                onChange={(event) => {
+                                    const nextTransactionId = String(event.target.value || "");
+                                    setSelectedSourceTransactionId(nextTransactionId);
+
+                                    const nextTransaction = salaryTransactions.find(
+                                        (transaction) => String(transaction.id) === nextTransactionId
+                                    );
+
+                                    if (nextTransaction) {
+                                        setSalaryAmount(String(nextTransaction.amount ?? ""));
+                                    }
+                                }}
+                            >
+                                <MenuItem value="">Calculator only</MenuItem>
+                                {salaryTransactions.map((transaction) => (
+                                    <MenuItem key={transaction.id} value={String(transaction.id)}>
+                                        {`${transaction.date} • ${formatCurrency(transaction.amount)} • ${accountNameById.get(String(transaction.account_id)) || "Unknown account"} • #${transaction.id}`}
+                                    </MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
@@ -178,6 +263,15 @@ export function SalaryAllocatorPage() {
                     {selectedAllocation && validationError ? (
                         <Alert severity="warning">{validationError}</Alert>
                     ) : null}
+                    {sourceTransaction ? (
+                        <Alert severity="success">
+                            Linked to salary transaction #{sourceTransaction.id} from {sourceTransaction.date} in {accountNameById.get(String(sourceTransaction.account_id)) || "Unknown account"}.
+                        </Alert>
+                    ) : (
+                        <Alert severity="info">
+                            Calculator mode is active. Select a salary transaction to enable Allocate actions.
+                        </Alert>
+                    )}
                 </Stack>
             </Card>
 
@@ -201,7 +295,7 @@ export function SalaryAllocatorPage() {
                         <Typography variant="subtitle1" fontWeight={700}>
                             Breakdown
                         </Typography>
-                        {breakdown.length ? breakdown.map((item) => (
+                        {breakdownWithAllocation.length ? breakdownWithAllocation.map((item) => (
                             <Stack
                                 key={item.id}
                                 direction="row"
@@ -214,10 +308,40 @@ export function SalaryAllocatorPage() {
                                     <Typography variant="body2" color="text.secondary">
                                         {Number(item.percentage).toFixed(2)}%
                                     </Typography>
+                                    {selectedSourceTransactionId ? (
+                                        <Typography variant="body2" color="text.secondary">
+                                            Allocated {formatCurrency(item.allocatedAmount)} • Remaining {formatCurrency(item.remainingAmount)}
+                                        </Typography>
+                                    ) : null}
                                 </Box>
-                                <Typography fontWeight={700}>
-                                    {formatCurrency(item.amount)}
-                                </Typography>
+                                <Stack direction="row" spacing={1.25} alignItems="center">
+                                    <Typography fontWeight={700}>
+                                        {formatCurrency(item.amount)}
+                                    </Typography>
+                                    {selectedSourceTransactionId ? (
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            disabled={item.remainingAmount <= 0}
+                                            onClick={() => {
+                                                navigate("/transactions", {
+                                                    state: {
+                                                        transactionPrefill: {
+                                                            type: "expense",
+                                                            amount: item.remainingAmount,
+                                                            user: selectedUser,
+                                                            note: `Allocated from Salary #${selectedSourceTransactionId} - ${item.label}`,
+                                                            source_salary_transaction_id: String(selectedSourceTransactionId),
+                                                            salary_allocation_item_id: String(item.id)
+                                                        }
+                                                    }
+                                                });
+                                            }}
+                                        >
+                                            {item.remainingAmount > 0 ? "Allocate" : "Allocated"}
+                                        </Button>
+                                    ) : null}
+                                </Stack>
                             </Stack>
                         )) : (
                             <Typography color="text.secondary">
