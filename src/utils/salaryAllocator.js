@@ -10,9 +10,12 @@ export function isSalaryTransaction(transaction, categories) {
     return String(category?.name || "").trim().toLowerCase() === "salary";
 }
 
-export function getDefaultAllocationForUser(user, allocations) {
+export function isSalaryAllocationBase(transaction) {
+    return Number(transaction?.is_salary_allocation_base || 0) === 1;
+}
+
+export function getDefaultAllocation(allocations) {
     return [...allocations]
-        .filter((allocation) => String(allocation.user || "") === String(user || ""))
         .sort((left, right) => Number(left.id || 0) - Number(right.id || 0))[0] || null;
 }
 

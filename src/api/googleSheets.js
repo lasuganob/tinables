@@ -98,7 +98,7 @@ export async function postData(action, payload) {
 }
 
 export async function loadBootstrapData(user, account) {
-  const [transactions, categories, tags, users, accounts, accountTypes, salaryAllocations, salaryAllocationItems, upcomingPayments] = await Promise.all([
+  const [transactions, categories, tags, users, accounts, accountTypes, salaryAllocations, salaryAllocationItems, salaryAllocationHistory, upcomingPayments] = await Promise.all([
     fetchData("getTransactions", user ? { user } : {}),
     fetchData("getCategories"),
     fetchData("getTags"),
@@ -107,6 +107,7 @@ export async function loadBootstrapData(user, account) {
     fetchData("getAccountTypes"),
     fetchData("getSalaryAllocations"),
     fetchData("getSalaryAllocationItems"),
+    fetchData("getSalaryAllocationHistory"),
     fetchData("getUpcomingPayments")
   ]);
 
@@ -119,6 +120,7 @@ export async function loadBootstrapData(user, account) {
     accountTypes,
     salaryAllocations,
     salaryAllocationItems,
+    salaryAllocationHistory,
     upcomingPayments
   };
 }

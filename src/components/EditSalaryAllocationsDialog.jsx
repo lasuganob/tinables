@@ -5,11 +5,8 @@ import {
     Dialog,
     DialogActions,
     DialogContent,
-    FormControl,
+    Divider,
     IconButton,
-    InputLabel,
-    MenuItem,
-    Select,
     Stack,
     TextField,
     Typography
@@ -19,23 +16,24 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import { postData } from "../api/googleSheets";
 import { DialogTitleWithClose } from "./DialogTitleWithClose";
 import { validateAllocationItems } from "../utils/salaryAllocator";
+import { AlertBox } from "./AlertBox";
 
 export function EditSalaryAllocationsDialog({
     open,
     onClose,
     allocation,
     allocationItems,
-    users,
     onSaved,
     saveSalaryAllocationLocally,
     saveSalaryAllocationItemLocally,
     removeSalaryAllocationItemLocally,
-    setError,
     setMessage,
-    setIsSaving
+    setIsSaving,
+    isSaving,
 }) {
-    const [draftAllocation, setDraftAllocation] = useState({ id: "", name: "", user: "" });
+    const [draftAllocation, setDraftAllocation] = useState({ id: "", name: "" });
     const [draftItems, setDraftItems] = useState([]);
+    const [validationError, setValidationError] = useState("");
 
     useEffect(() => {
         if (!open) {
@@ -44,8 +42,7 @@ export function EditSalaryAllocationsDialog({
 
         setDraftAllocation({
             id: String(allocation?.id || ""),
-            name: String(allocation?.name || ""),
-            user: String(allocation?.user || users[0]?.name || "")
+            name: String(allocation?.name || "")
         });
         setDraftItems(
             allocationItems.length
@@ -57,7 +54,7 @@ export function EditSalaryAllocationsDialog({
                 }))
                 : [{ id: "", allocation_id: String(allocation?.id || ""), label: "", percentage: "" }]
         );
-    }, [allocation, allocationItems, open, users]);
+    }, [allocation, allocationItems, open]);
 
     const totalPercentage = useMemo(
         () => draftItems.reduce((sum, item) => sum + Number(item.percentage || 0), 0),
@@ -70,28 +67,22 @@ export function EditSalaryAllocationsDialog({
         );
 
         if (!draftAllocation.name.trim()) {
-            setError("Allocation name is required.");
-            return;
-        }
-
-        if (!draftAllocation.user.trim()) {
-            setError("Allocation user is required.");
+            setValidationError("Allocation name is required.");
             return;
         }
 
         if (validationError) {
-            setError(validationError);
+            setValidationError(validationError);
             return;
         }
 
         setIsSaving(true);
-        setError("");
+        setValidationError("");
 
         try {
             const allocationPayload = {
                 id: draftAllocation.id,
-                name: draftAllocation.name.trim(),
-                user: draftAllocation.user
+                name: draftAllocation.name.trim()
             };
             const allocationAction = draftAllocation.id ? "updateSalaryAllocation" : "addSalaryAllocation";
             const allocationResult = await postData(allocationAction, allocationPayload);
@@ -102,27 +93,26 @@ export function EditSalaryAllocationsDialog({
 
             const nextAllocationId = String(savedAllocation.id);
             const existingItemIds = new Set((allocationItems || []).map((item) => String(item.id)));
-            const draftItemIds = new Set();
-
-            for (const item of draftItems) {
-                const itemPayload = {
+            const savedItems = await postData("replaceSalaryAllocationItems", {
+                allocation_id: nextAllocationId,
+                items: draftItems.map((item) => ({
                     id: item.id,
-                    allocation_id: nextAllocationId,
                     label: item.label.trim(),
                     percentage: Number(item.percentage || 0)
-                };
-                const itemAction = item.id ? "updateSalaryAllocationItem" : "addSalaryAllocationItem";
-                const itemResult = await postData(itemAction, itemPayload);
-                const savedItem = saveSalaryAllocationItemLocally({
-                    ...itemPayload,
-                    id: String(itemResult.id ?? item.id)
-                });
-                draftItemIds.add(String(savedItem.id));
-            }
+                }))
+            });
+            const draftItemIds = new Set(
+                savedItems.map((item) => {
+                    const savedItem = saveSalaryAllocationItemLocally({
+                        ...item,
+                        id: String(item.id ?? "")
+                    });
+                    return String(savedItem.id);
+                })
+            );
 
             for (const existingId of existingItemIds) {
                 if (!draftItemIds.has(existingId)) {
-                    await postData("deleteSalaryAllocationItem", { id: existingId });
                     removeSalaryAllocationItemLocally(existingId);
                 }
             }
@@ -131,15 +121,15 @@ export function EditSalaryAllocationsDialog({
             onSaved(savedAllocation);
             onClose();
         } catch (error) {
-            setError(error.message);
+            setValidationError(error.message);
         } finally {
             setIsSaving(false);
         }
     }
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-            <DialogTitleWithClose onClose={onClose}>
+        <Dialog open={open} onClose={isSaving ? undefined : onClose} fullWidth maxWidth="sm">
+            <DialogTitleWithClose onClose={onClose} disabled={isSaving}>
                 Edit Allocations
             </DialogTitleWithClose>
             <DialogContent dividers>
@@ -150,27 +140,17 @@ export function EditSalaryAllocationsDialog({
                         onChange={(event) => setDraftAllocation((current) => ({ ...current, name: event.target.value }))}
                         fullWidth
                         size="small"
+                        disabled={isSaving}
                     />
-                    <FormControl fullWidth size="small">
-                        <InputLabel>User</InputLabel>
-                        <Select
-                            label="User"
-                            value={draftAllocation.user}
-                            onChange={(event) => setDraftAllocation((current) => ({ ...current, user: event.target.value }))}
-                        >
-                            {users.map((user) => (
-                                <MenuItem key={user.id} value={user.name}>{user.name}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                    <Divider />
                     <Stack spacing={1.25}>
                         {draftItems.map((item, index) => (
                             <Box
                                 key={item.id || `new-${index}`}
                                 sx={{
                                     display: "grid",
-                                    gap: 1,
-                                    gridTemplateColumns: { xs: "1fr", sm: "1.6fr 1fr auto" },
+                                    gap: 2,
+                                    gridTemplateColumns: { xs: "2fr 0.8fr auto" },
                                     alignItems: "center"
                                 }}
                             >
@@ -183,6 +163,7 @@ export function EditSalaryAllocationsDialog({
                                         nextItems[index] = { ...nextItems[index], label: event.target.value };
                                         setDraftItems(nextItems);
                                     }}
+                                    disabled={isSaving}
                                 />
                                 <TextField
                                     label="Percentage"
@@ -195,21 +176,27 @@ export function EditSalaryAllocationsDialog({
                                         nextItems[index] = { ...nextItems[index], percentage: event.target.value };
                                         setDraftItems(nextItems);
                                     }}
+                                    disabled={isSaving}
                                 />
                                 <IconButton
                                     aria-label="Delete allocation item"
                                     color="error"
                                     onClick={() => setDraftItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                                    disabled={isSaving}
                                 >
                                     <DeleteRoundedIcon />
                                 </IconButton>
                             </Box>
                         ))}
+                        {validationError &&
+                            <AlertBox message={validationError} severity="error" onClose={() => setValidationError(null)} />
+                        }
                     </Stack>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Button
                             startIcon={<AddRoundedIcon />}
                             onClick={() => setDraftItems((current) => [...current, { id: "", allocation_id: draftAllocation.id, label: "", percentage: "" }])}
+                            disabled={isSaving}
                         >
                             Add Item
                         </Button>
@@ -220,7 +207,7 @@ export function EditSalaryAllocationsDialog({
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
+                <Button onClick={onClose} disabled={isSaving}>Cancel</Button>
                 <Button
                     variant="contained"
                     onClick={handleSave}
@@ -230,8 +217,9 @@ export function EditSalaryAllocationsDialog({
                             bgcolor: "#3f594b"
                         }
                     }}
+                    disabled={isSaving}
                 >
-                    Save
+                    {isSaving ? "Saving..." : "Save"}
                 </Button>
             </DialogActions>
         </Dialog>

@@ -265,15 +265,7 @@ export function TransactionsPage() {
             variant="contained"
             onClick={() => {
               setShowSalaryAllocatorDialog(false);
-              navigate("/salary-allocator", {
-                state: {
-                  salaryAllocatorInput: {
-                    amount: pendingSalaryAllocatorPayload?.amount || 0,
-                    user: pendingSalaryAllocatorPayload?.user || "",
-                    sourceTransactionId: pendingSalaryAllocatorPayload?.transactionId || ""
-                  }
-                }
-              });
+              navigate(`/salary-allocator/${pendingSalaryAllocatorPayload?.transactionId || ""}`);
             }}
             sx={{
               bgcolor: "#4a6555",

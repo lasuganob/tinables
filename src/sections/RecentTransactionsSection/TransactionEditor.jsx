@@ -1,49 +1,12 @@
 import { useMemo, useState } from "react";
 import {
     Box, Button, Checkbox, Chip, FormControl, FormControlLabel,
-    InputLabel, ListSubheader, MenuItem, OutlinedInput, Paper,
-    Select, Stack, TextField, Typography,
+    InputLabel, MenuItem, OutlinedInput, Paper,
+    Select, Stack, Switch, TextField, Typography,
     useMediaQuery, useTheme
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import MoneyIcon from "@mui/icons-material/Money";
-import SavingsIcon from "@mui/icons-material/Savings";
-
-function AccountTypeIcon({ typeName }) {
-    if (typeName === "cash") return <MoneyIcon />;
-    if (typeName === "e-wallet") return <AccountBalanceWalletIcon />;
-    if (typeName === "bank") return <AccountBalanceIcon />;
-    if (typeName === "savings") return <SavingsIcon />;
-    return null;
-}
-
-function renderAccountOptionItems(items, formatCurrency) {
-    return items.map((account) => (
-        <MenuItem key={account.id} value={String(account.id)} sx={{ pl: 4 }}>
-            {account.name}
-            {account.userName ? (
-                <Chip
-                    color={account.user === 1 ? "warning" : "primary"}
-                    variant="filled"
-                    size="small"
-                    label={account.userName}
-                    sx={{ ml: 1 }}
-                />
-            ) : null}
-            {account.balance ? (
-                <Chip
-                    color="primary"
-                    variant="outlined"
-                    size="small"
-                    label={formatCurrency(account.balance)}
-                    sx={{ ml: 1 }}
-                />
-            ) : null}
-        </MenuItem>
-    ));
-}
+import { AccountSelector } from "../../components/AccountSelector";
 
 export function TransactionEditor({
     transactionForm,
@@ -68,61 +31,6 @@ export function TransactionEditor({
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const [isTagsMenuOpen, setIsTagsMenuOpen] = useState(false);
-
-    const userNameById = useMemo(
-        () => new Map(users.map((user) => [String(user.id), user.name])),
-        [users]
-    );
-
-    const accountOptionsWithUser = useMemo(() => {
-        const accountOptions = [...accounts];
-        const selectedAccountIds = [
-            String(transactionForm.account_id || ""),
-            String(transactionForm.transfer_account_id || "")
-        ].filter(Boolean);
-
-        selectedAccountIds.forEach((selectedId) => {
-            const exists = accountOptions.some((account) => String(account.id) === selectedId);
-            if (!exists) {
-                accountOptions.push({
-                    id: selectedId,
-                    name: accountNameById.get(selectedId) || `Account ${selectedId}`
-                });
-            }
-        });
-
-        return accountOptions.map((account) => ({
-            ...account,
-            userName: userNameById.get(String(account.user)) || ""
-        }));
-    }, [
-        accounts,
-        transactionForm.account_id,
-        transactionForm.transfer_account_id,
-        accountNameById,
-        userNameById
-    ]);
-
-    const groupedAccountOptions = useMemo(() => {
-        const typeNameById = new Map(
-            (accountTypes || []).map((accountType) => [String(accountType.id), accountType.name])
-        );
-        const groups = new Map();
-
-        accountOptionsWithUser.forEach((account) => {
-            const typeKey = String(account.type || "");
-            const typeName = typeNameById.get(typeKey) || "Other";
-
-            if (!groups.has(typeKey)) {
-                groups.set(typeKey, { typeKey, typeName, accounts: [] });
-            }
-            groups.get(typeKey).accounts.push(account);
-        });
-
-        return [...groups.values()].sort((left, right) =>
-            left.typeName.localeCompare(right.typeName)
-        );
-    }, [accountOptionsWithUser, accountTypes]);
 
     const salaryCategoryIds = useMemo(
         () => new Set(
@@ -176,49 +84,34 @@ export function TransactionEditor({
                         gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }
                     }}
                 >
-                    <FormControl fullWidth size="small" disabled={isSaving} required>
-                        <InputLabel required>From Account</InputLabel>
-                        <Select
-                            label="From Account"
-                            value={String(transactionForm.account_id ?? "")}
-                            onChange={(event) => setTransactionForm({ ...transactionForm, account_id: event.target.value })}
-                            required
-                        >
-                            <MenuItem value="">Select an account</MenuItem>
-                            {groupedAccountOptions.map((group) => ([
-                                <ListSubheader key={`from-header-${group.typeKey}`} sx={{ textTransform: "capitalize", display: "flex", alignItems: "center", gap: 1, fontWeight: "bold" }}>
-                                    <AccountTypeIcon typeName={group.typeName} />
-                                    {group.typeName}
-                                </ListSubheader>,
-                                ...renderAccountOptionItems(group.accounts, formatCurrency)
-                            ]))}
-                        </Select>
-                    </FormControl>
+                    <AccountSelector
+                        label="From Account"
+                        value={transactionForm.account_id}
+                        onChange={(value) => setTransactionForm({ ...transactionForm, account_id: value })}
+                        accounts={accounts}
+                        accountTypes={accountTypes}
+                        users={users}
+                        accountNameById={accountNameById}
+                        formatCurrency={formatCurrency}
+                        includeSelectedIds={[transactionForm.account_id, transactionForm.transfer_account_id]}
+                        disabled={isSaving}
+                        required
+                    />
 
-                    <FormControl fullWidth size="small" disabled={isSaving} required>
-                        <InputLabel required>To Account</InputLabel>
-                        <Select
-                            label="To Account"
-                            value={String(transactionForm.transfer_account_id ?? "")}
-                            onChange={(event) => setTransactionForm({ ...transactionForm, transfer_account_id: event.target.value })}
-                            required
-                        >
-                            <MenuItem value="">Select an account</MenuItem>
-                            {groupedAccountOptions.map((group) => {
-                                const eligibleAccounts = group.accounts.filter(
-                                    (account) => String(account.id) !== String(transactionForm.account_id)
-                                );
-                                if (!eligibleAccounts.length) return null;
-                                return [
-                                    <ListSubheader key={`to-header-${group.typeKey}`} sx={{ textTransform: "capitalize", display: "flex", alignItems: "center", gap: 1, fontWeight: "bold" }}>
-                                        <AccountTypeIcon typeName={group.typeName} />
-                                        {group.typeName}
-                                    </ListSubheader>,
-                                    ...renderAccountOptionItems(eligibleAccounts, formatCurrency)
-                                ];
-                            })}
-                        </Select>
-                    </FormControl>
+                    <AccountSelector
+                        label="To Account"
+                        value={transactionForm.transfer_account_id}
+                        onChange={(value) => setTransactionForm({ ...transactionForm, transfer_account_id: value })}
+                        accounts={accounts}
+                        accountTypes={accountTypes}
+                        users={users}
+                        accountNameById={accountNameById}
+                        formatCurrency={formatCurrency}
+                        includeSelectedIds={[transactionForm.account_id, transactionForm.transfer_account_id]}
+                        excludeAccountIds={[transactionForm.account_id]}
+                        disabled={isSaving}
+                        required
+                    />
 
                     <TextField
                         label="Transfer Fee"
@@ -253,7 +146,7 @@ export function TransactionEditor({
 
                 <FormControlLabel
                     control={(
-                        <Checkbox
+                        <Switch
                             checked={Number(transactionForm.is_salary_allocation_base || 0) === 1}
                             disabled={!transactionForm.source_salary_transaction_id}
                             onChange={(event) => setTransactionForm({
@@ -315,24 +208,19 @@ export function TransactionEditor({
             </FormControl>
 
             {!isTransfer ? (
-                <FormControl fullWidth size="small" disabled={isSaving} required>
-                    <InputLabel required>Account</InputLabel>
-                    <Select
-                        label="Account"
-                        value={String(transactionForm.account_id ?? "")}
-                        onChange={(event) => setTransactionForm({ ...transactionForm, account_id: event.target.value })}
-                        required
-                    >
-                        <MenuItem value="">Select an account</MenuItem>
-                        {groupedAccountOptions.map((group) => ([
-                            <ListSubheader key={`account-header-${group.typeKey}`} sx={{ textTransform: "capitalize", display: "flex", alignItems: "center", gap: 1, fontWeight: "bold" }}>
-                                <AccountTypeIcon typeName={group.typeName} />
-                                {group.typeName}
-                            </ListSubheader>,
-                            ...renderAccountOptionItems(group.accounts, formatCurrency)
-                        ]))}
-                    </Select>
-                </FormControl>
+                <AccountSelector
+                    label="Account"
+                    value={transactionForm.account_id}
+                    onChange={(value) => setTransactionForm({ ...transactionForm, account_id: value })}
+                    accounts={accounts}
+                    accountTypes={accountTypes}
+                    users={users}
+                    accountNameById={accountNameById}
+                    formatCurrency={formatCurrency}
+                    includeSelectedIds={[transactionForm.account_id]}
+                    disabled={isSaving}
+                    required
+                />
             ) : null}
 
             {!isTransfer ? (

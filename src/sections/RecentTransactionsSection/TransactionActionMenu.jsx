@@ -1,7 +1,9 @@
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import PieChartRoundedIcon from '@mui/icons-material/PieChartRounded';
 import { ConfirmDeleteDialog } from "../../components/ConfirmDeleteDialog";
+import { useNavigate } from "react-router-dom";
 
 export function TransactionActionMenu({
     anchorEl,
@@ -16,6 +18,8 @@ export function TransactionActionMenu({
     onCancelDelete,
     onConfirmDelete,
 }) {
+    const navigate = useNavigate();
+
     return (
         <>
             <Menu
@@ -31,10 +35,24 @@ export function TransactionActionMenu({
                     }}
                 >
                     <ListItemIcon>
-                        <EditRoundedIcon fontSize="small" />
+                        <EditRoundedIcon fontSize="small" color="secondary" />
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
                 </MenuItem>
+                {((transaction?.category_id === 1 && transaction?.type === 'income') || transaction?.is_salary_allocation_base === 1) && (
+                    <MenuItem
+                        onClick={(event) => {
+                            event.currentTarget.blur();
+                            onClose();
+                            navigate(`/salary-allocator/${transaction.id}`);
+                        }}
+                    >
+                        <ListItemIcon>
+                            <PieChartRoundedIcon fontSize="small" color="primary" />
+                        </ListItemIcon>
+                        <ListItemText>Allocate</ListItemText>
+                    </MenuItem>
+                )}
                 <MenuItem
                     onClick={(event) => {
                         event.currentTarget.blur();

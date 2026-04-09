@@ -11,7 +11,7 @@ export function PieChart({ data, seriesName = "Expenses", emptyMessage = "No dat
     chart: {
       type: "pie",
       backgroundColor: "transparent",
-      height: 360
+      height: 500
     },
     title: {
       text: null

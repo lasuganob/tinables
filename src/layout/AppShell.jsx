@@ -6,14 +6,13 @@ import {
   Box,
   IconButton,
   Toolbar,
-  Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
-import CloseIcon from "@mui/icons-material/Close";
 import { SidebarNav } from "./SidebarNav";
 import { useAppFeedbackContext } from "../context/AppDataContext";
+import { AlertBox } from "../components/AlertBox";
 
 export function AppShell() {
   const theme = useTheme();
@@ -136,42 +135,10 @@ export function AppShell() {
         {error || message ? (
           <Box>
             {error ? (
-              <Alert
-                variant="outlined"
-                severity="error"
-                sx={{ m: 2, mb: 0, backgroundColor: "#ffcdcdff" }}
-                action={
-                  <IconButton
-                    aria-label="close error"
-                    color="inherit"
-                    size="small"
-                    onClick={() => setError(null)}
-                  >
-                    <CloseIcon fontSize="inherit" />
-                  </IconButton>
-                }
-              >
-                {error}
-              </Alert>
+              <AlertBox message={error} severity="error" onClose={() => setError(null)} />
             ) : null}
             {message ? (
-              <Alert
-                variant="outlined"
-                severity="success"
-                sx={{ m: 2, mb: 0, backgroundColor: "#d4edda" }}
-                action={
-                  <IconButton
-                    aria-label="close message"
-                    color="inherit"
-                    size="small"
-                    onClick={() => setMessage(null)}
-                  >
-                    <CloseIcon fontSize="inherit" />
-                  </IconButton>
-                }
-              >
-                {message}
-              </Alert>
+              <AlertBox message={message} severity="success" onClose={() => setMessage(null)} />
             ) : null}
           </Box>
         ) : null}

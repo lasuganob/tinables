@@ -13,112 +13,116 @@ import {
     TextField,
     Typography
 } from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { postData } from "../api/googleSheets";
+import { AllocateAmountDialog } from "../components/AllocateAmountDialog";
 import { PieChart } from "../components/PieChart";
 import { EditSalaryAllocationsDialog } from "../components/EditSalaryAllocationsDialog";
 import { useAppDataContext, useAppFeedbackContext } from "../context/AppDataContext";
-import { formatCurrency } from "../lib/format";
+import { formatCurrency, getTodayInAppTimeZone } from "../lib/format";
 import {
     computeSalaryBreakdown,
     getAllocatedAmountForItem,
     getAllocationItems,
-    getDefaultAllocationForUser,
+    getDefaultAllocation,
     isSalaryTransaction,
+    isSalaryAllocationBase,
     toPieChartData,
     validateAllocationItems
 } from "../utils/salaryAllocator";
 
-function isAllocationBaseTransfer(transaction) {
-    return String(transaction?.type || "").toLowerCase() === "transfer"
-        && Number(transaction?.is_salary_allocation_base || 0) === 1
-        && String(transaction?.source_salary_transaction_id || "");
-}
-
 export function SalaryAllocatorPage() {
-    const location = useLocation();
     const navigate = useNavigate();
+    const { id: routeTransactionId = "" } = useParams();
     const {
         salaryAllocations,
         salaryAllocationItems,
         transactions,
         categories,
         accounts,
+        accountTypes,
+        tags,
         users,
+        isLoading,
+        salaryAllocationHistory,
+        saveTransactionLocally,
+        saveSalaryAllocationHistoryLocally,
         saveSalaryAllocationLocally,
         saveSalaryAllocationItemLocally,
         removeSalaryAllocationItemLocally
     } = useAppDataContext();
-    const { setError, setMessage, setIsSaving } = useAppFeedbackContext();
+    const { isSaving, setError, setMessage, setIsSaving } = useAppFeedbackContext();
     const [selectedUser, setSelectedUser] = useState("");
     const [salaryAmount, setSalaryAmount] = useState("");
     const [selectedAllocationId, setSelectedAllocationId] = useState("");
-    const [selectedSourceTransactionId, setSelectedSourceTransactionId] = useState("");
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [allocationDialogItem, setAllocationDialogItem] = useState(null);
+    const [allocationForm, setAllocationForm] = useState({
+        type: "expense",
+        category_id: "",
+        transfer_account_id: "",
+        tags: [],
+        note: ""
+    });
+    const [isTagsMenuOpen, setIsTagsMenuOpen] = useState(false);
+    const isAllocatorMode = Boolean(String(routeTransactionId || "").trim());
+    const routeTransaction = useMemo(() => {
+        if (!isAllocatorMode || isLoading) {
+            return null;
+        }
 
+        return transactions.find(
+            (transaction) => String(transaction.id) === String(routeTransactionId)
+        ) || null;
+    }, [categories, isAllocatorMode, isLoading, routeTransactionId, transactions]);
+    const linkedAllocationBaseTransfer = useMemo(() => {
+        if (!routeTransaction || !isSalaryTransaction(routeTransaction, categories)) {
+            return null;
+        }
+
+        return transactions.find((transaction) =>
+            isSalaryAllocationBase(transaction)
+            && String(transaction.source_salary_transaction_id || "") === String(routeTransaction.id)
+        ) || null;
+    }, [categories, routeTransaction, transactions]);
+    const sourceTransaction = useMemo(() => {
+        if (!routeTransaction) {
+            return null;
+        }
+
+        if (isSalaryAllocationBase(routeTransaction)) {
+            return routeTransaction;
+        }
+
+        if (isSalaryTransaction(routeTransaction, categories)) {
+            return linkedAllocationBaseTransfer ? null : routeTransaction;
+        }
+
+        return null;
+    }, [categories, linkedAllocationBaseTransfer, routeTransaction]);
     useEffect(() => {
-        const input = location.state?.salaryAllocatorInput;
-        if (!input) {
-            if (!selectedUser && users[0]?.name) {
-                setSelectedUser(users[0].name);
-            }
+        if (!isAllocatorMode || isLoading || !linkedAllocationBaseTransfer) {
             return;
         }
 
-        setSelectedUser(String(input.user || users[0]?.name || ""));
-        setSalaryAmount(String(input.amount ?? ""));
-        setSelectedSourceTransactionId(String(input.sourceTransactionId || ""));
-    }, [location.state, selectedUser, users]);
+        navigate(`/salary-allocator/${linkedAllocationBaseTransfer.id}`, { replace: true });
+    }, [isAllocatorMode, isLoading, linkedAllocationBaseTransfer, navigate]);
 
-    const allocationSourceOptions = useMemo(() => {
-        const linkedTransferBySalaryId = new Map();
+    useEffect(() => {
+        if (sourceTransaction) {
+            setSelectedUser(String(sourceTransaction.user || users[0]?.name || ""));
+            setSalaryAmount(String(sourceTransaction.amount ?? ""));
+            return;
+        }
 
-        transactions.forEach((transaction) => {
-            if (
-                String(transaction.user || "") === String(selectedUser || "")
-                && isAllocationBaseTransfer(transaction)
-            ) {
-                linkedTransferBySalaryId.set(String(transaction.source_salary_transaction_id), transaction);
-            }
-        });
-
-        const sources = transactions.filter((transaction) => {
-            if (String(transaction.user || "") !== String(selectedUser || "")) {
-                return false;
-            }
-
-            if (isAllocationBaseTransfer(transaction)) {
-                return true;
-            }
-
-            if (!isSalaryTransaction(transaction, categories)) {
-                return false;
-            }
-
-            return !linkedTransferBySalaryId.has(String(transaction.id));
-        });
-
-        const selectedTransaction = transactions.find(
-            (transaction) => String(transaction.id) === String(selectedSourceTransactionId)
-        );
-
-        return (selectedTransaction
-            && !sources.some((transaction) => String(transaction.id) === String(selectedTransaction.id))
-            ? [...sources, selectedTransaction]
-            : sources)
-            .sort((left, right) => {
-                if (String(left.date || "") !== String(right.date || "")) {
-                    return String(right.date || "").localeCompare(String(left.date || ""));
-                }
-
-                return Number(right.id || 0) - Number(left.id || 0);
-            });
-    }, [categories, selectedSourceTransactionId, selectedUser, transactions]);
+        if (!isAllocatorMode && !selectedUser && users[0]?.name) {
+            setSelectedUser(users[0].name);
+        }
+    }, [isAllocatorMode, selectedUser, sourceTransaction, users]);
 
     const userAllocations = useMemo(
-        () => salaryAllocations
-            .filter((allocation) => String(allocation.user || "") === String(selectedUser || ""))
-            .sort((left, right) => Number(left.id || 0) - Number(right.id || 0)),
-        [salaryAllocations, selectedUser]
+        () => [...salaryAllocations].sort((left, right) => Number(left.id || 0) - Number(right.id || 0)),
+        [salaryAllocations]
     );
 
     useEffect(() => {
@@ -126,7 +130,7 @@ export function SalaryAllocatorPage() {
             return;
         }
 
-        const defaultAllocation = getDefaultAllocationForUser(selectedUser, userAllocations);
+        const defaultAllocation = getDefaultAllocation(userAllocations);
         setSelectedAllocationId((current) => {
             if (current && userAllocations.some((allocation) => String(allocation.id) === String(current))) {
                 return current;
@@ -164,16 +168,15 @@ export function SalaryAllocatorPage() {
         () => new Map(accounts.map((account) => [String(account.id), account.name])),
         [accounts]
     );
-
-    const sourceTransaction = useMemo(
-        () => allocationSourceOptions.find((transaction) => String(transaction.id) === String(selectedSourceTransactionId)) || null,
-        [allocationSourceOptions, selectedSourceTransactionId]
+    const expenseCategories = useMemo(
+        () => categories.filter((category) => String(category.type || "").toLowerCase() === "expense"),
+        [categories]
     );
 
     const breakdownWithAllocation = useMemo(
         () => breakdown.map((item) => {
-            const allocatedAmount = selectedSourceTransactionId
-                ? Number(getAllocatedAmountForItem(transactions, selectedSourceTransactionId, item.id).toFixed(2))
+            const allocatedAmount = sourceTransaction
+                ? Number(getAllocatedAmountForItem(transactions, sourceTransaction.id, item.id).toFixed(2))
                 : 0;
 
             return {
@@ -182,8 +185,142 @@ export function SalaryAllocatorPage() {
                 remainingAmount: Number(Math.max(item.amount - allocatedAmount, 0).toFixed(2))
             };
         }),
-        [breakdown, selectedSourceTransactionId, transactions]
+        [breakdown, sourceTransaction, transactions]
     );
+    const currentSourceHistory = useMemo(
+        () => salaryAllocationHistory.filter(
+            (item) => String(item.source_transaction_id || "") === String(sourceTransaction?.id || "")
+        ),
+        [salaryAllocationHistory, sourceTransaction]
+    );
+    const fromAccount = sourceTransaction?.is_salary_allocation_base === 1 ? sourceTransaction?.transfer_account_id : sourceTransaction?.account_id;
+    const fromAccountName = accountNameById.get(String(fromAccount || "")) || "Unknown account";
+
+    function openAllocationDialog(item) {
+        setAllocationDialogItem(item);
+        setAllocationForm({
+            type: "expense",
+            category_id: "",
+            transfer_account_id: "",
+            tags: [],
+            note: `Allocated from Salary #${sourceTransaction?.id || ""} - ${item.label}`
+        });
+    }
+
+    function closeAllocationDialog() {
+        if (isSaving) {
+            return;
+        }
+
+        setAllocationDialogItem(null);
+        setAllocationForm({
+            type: "expense",
+            category_id: "",
+            transfer_account_id: "",
+            tags: [],
+            note: ""
+        });
+        setIsTagsMenuOpen(false);
+    }
+
+    async function handleAllocateSubmit() {
+        if (!sourceTransaction || !allocationDialogItem) {
+            return;
+        }
+
+        const payload = {
+            date: getTodayInAppTimeZone(),
+            type: allocationForm.type,
+            category_id: allocationForm.type === "expense" ? String(allocationForm.category_id || "") : "",
+            account_id: sourceTransaction?.is_salary_allocation_base === 1
+                ? String(sourceTransaction?.transfer_account_id || "")
+                : String(sourceTransaction.account_id || ""),
+            transfer_account_id: allocationForm.type === "transfer"
+                ? String(allocationForm.transfer_account_id || "")
+                : "",
+            transfer_fee: 0,
+            amount: Number(allocationDialogItem.remainingAmount || 0),
+            note: String(allocationForm.note || ""),
+            tags: allocationForm.tags.length <= 1
+                ? String(allocationForm.tags[0] || "")
+                : allocationForm.tags.join(","),
+            user: String(sourceTransaction.user || ""),
+            source_salary_transaction_id: String(sourceTransaction.id || ""),
+            salary_allocation_item_id: String(allocationDialogItem.id || ""),
+            is_salary_allocation_base: 0
+        };
+
+        if (payload.type === "expense" && !payload.category_id) {
+            setError("Select a category.");
+            return;
+        }
+
+        if (payload.type === "transfer" && !payload.transfer_account_id) {
+            setError("Select a destination account.");
+            return;
+        }
+
+        if (
+            payload.type === "transfer"
+            && String(payload.account_id) === String(payload.transfer_account_id)
+        ) {
+            setError("Transfer destination must be different from the source account.");
+            return;
+        }
+
+        setIsSaving(true);
+        setError("");
+        setMessage("");
+
+        try {
+            const result = await postData("addTransaction", payload);
+            saveTransactionLocally({
+                ...payload,
+                id: String(result.id ?? "")
+            });
+            const historyResult = await postData("addSalaryAllocationHistory", {
+                source_transaction_id: String(sourceTransaction.id || ""),
+                allocation_id: String(selectedAllocationId || ""),
+                allocation_item_id: String(allocationDialogItem.id || ""),
+                allocated_transaction_id: String(result.id ?? ""),
+                user: String(sourceTransaction.user || ""),
+                type: String(payload.type || ""),
+                amount: Number(payload.amount || 0),
+                account_id: String(payload.account_id || ""),
+                transfer_account_id: String(payload.transfer_account_id || ""),
+                note: String(payload.note || ""),
+                allocated_at: String(payload.date || "")
+            });
+            saveSalaryAllocationHistoryLocally({
+                id: String(historyResult.id ?? ""),
+                source_transaction_id: String(sourceTransaction.id || ""),
+                allocation_id: String(selectedAllocationId || ""),
+                allocation_item_id: String(allocationDialogItem.id || ""),
+                allocated_transaction_id: String(result.id ?? ""),
+                user: String(sourceTransaction.user || ""),
+                type: String(payload.type || ""),
+                amount: Number(payload.amount || 0),
+                account_id: String(payload.account_id || ""),
+                transfer_account_id: String(payload.transfer_account_id || ""),
+                note: String(payload.note || ""),
+                allocated_at: String(payload.date || "")
+            });
+            setMessage(`Allocated ${allocationDialogItem.label}.`);
+            setAllocationDialogItem(null);
+            setAllocationForm({
+                type: "expense",
+                category_id: "",
+                transfer_account_id: "",
+                tags: [],
+                note: ""
+            });
+            setIsTagsMenuOpen(false);
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setIsSaving(false);
+        }
+    }
 
     return (
         <Stack spacing={3}>
@@ -202,22 +339,10 @@ export function SalaryAllocatorPage() {
                         sx={{
                             display: "grid",
                             gap: 2,
-                            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr auto" },
+                            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr auto" },
                             alignItems: "end"
                         }}
                     >
-                        <FormControl fullWidth size="small">
-                            <InputLabel>User</InputLabel>
-                            <Select
-                                label="User"
-                                value={selectedUser}
-                                onChange={(event) => setSelectedUser(event.target.value)}
-                            >
-                                {users.map((user) => (
-                                    <MenuItem key={user.id} value={user.name}>{user.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
                         <TextField
                             label="Salary Amount"
                             size="small"
@@ -225,6 +350,7 @@ export function SalaryAllocatorPage() {
                             inputProps={{ min: 0, step: "0.01" }}
                             value={salaryAmount}
                             onChange={(event) => setSalaryAmount(event.target.value)}
+                            disabled={isAllocatorMode}
                             fullWidth
                         />
                         <FormControl fullWidth size="small" disabled={!userAllocations.length}>
@@ -233,35 +359,10 @@ export function SalaryAllocatorPage() {
                                 label="Allocation Preset"
                                 value={selectedAllocationId}
                                 onChange={(event) => setSelectedAllocationId(event.target.value)}
+                                disabled={currentSourceHistory.length > 0}
                             >
                                 {userAllocations.map((allocation) => (
                                     <MenuItem key={allocation.id} value={String(allocation.id)}>{allocation.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Referenced Salary</InputLabel>
-                            <Select
-                                label="Referenced Salary"
-                                value={selectedSourceTransactionId}
-                                onChange={(event) => {
-                                    const nextTransactionId = String(event.target.value || "");
-                                    setSelectedSourceTransactionId(nextTransactionId);
-
-                                    const nextTransaction = allocationSourceOptions.find(
-                                        (transaction) => String(transaction.id) === nextTransactionId
-                                    );
-
-                                    if (nextTransaction) {
-                                        setSalaryAmount(String(nextTransaction.amount ?? ""));
-                                    }
-                                }}
-                            >
-                                <MenuItem value="">Calculator only</MenuItem>
-                                {allocationSourceOptions.map((transaction) => (
-                                    <MenuItem key={transaction.id} value={String(transaction.id)}>
-                                        {`${String(transaction.type || "").toLowerCase() === "transfer" ? "Transfer" : "Salary"} • ${transaction.date} • ${formatCurrency(transaction.amount)} • ${accountNameById.get(String(transaction.account_id)) || "Unknown account"} • #${transaction.id}`}
-                                    </MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
@@ -278,6 +379,11 @@ export function SalaryAllocatorPage() {
                             Edit Allocations
                         </Button>
                     </Box>
+                    <Box>
+                        <Typography variant="body1" sx={{fontSize: "0.6em"}}>
+                            {selectedAllocation?.name + " (" + selectedAllocationItems.map((item) => item.label + ": " + item.percentage + "%").join(" | ") + ")"}
+                        </Typography>
+                    </Box>
 
                     {!selectedAllocation ? (
                         <Alert severity="info">
@@ -287,15 +393,21 @@ export function SalaryAllocatorPage() {
                     {selectedAllocation && validationError ? (
                         <Alert severity="warning">{validationError}</Alert>
                     ) : null}
-                    {sourceTransaction ? (
+                    {isAllocatorMode && sourceTransaction ? (
                         <Alert severity="success">
-                            Linked to {String(sourceTransaction.type || "").toLowerCase() === "transfer" ? "transfer" : "salary"} transaction #{sourceTransaction.id} from {sourceTransaction.date} in {accountNameById.get(String(sourceTransaction.account_id)) || "Unknown account"}.
+                            Allocating salary transaction #{sourceTransaction.id} from {sourceTransaction.date} in {accountNameById.get(String(sourceTransaction.account_id)) || "Unknown account"}.
                         </Alert>
-                    ) : (
+                    ) : null}
+                    {isAllocatorMode && !isLoading && !linkedAllocationBaseTransfer && !sourceTransaction ? (
+                        <Alert severity="error">
+                            Invalid allocator transaction. Use a valid Salary income or allocation-base transfer transaction ID.
+                        </Alert>
+                    ) : null}
+                    {!isAllocatorMode ? (
                         <Alert severity="info">
-                            Calculator mode is active. Select a salary transaction to enable Allocate actions.
+                            Calculator mode is active.
                         </Alert>
-                    )}
+                    ) : null}
                 </Stack>
             </Card>
 
@@ -328,13 +440,10 @@ export function SalaryAllocatorPage() {
                                 alignItems="center"
                             >
                                 <Box>
-                                    <Typography fontWeight={600}>{item.label}</Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        {Number(item.percentage).toFixed(2)}%
-                                    </Typography>
-                                    {selectedSourceTransactionId ? (
+                                    <Typography fontWeight={600}>{item.label} ({Number(item.percentage).toFixed(2)}%)</Typography>
+                                    {sourceTransaction ? (
                                         <Typography variant="body2" color="text.secondary">
-                                            Allocated {formatCurrency(item.allocatedAmount)} • Remaining {formatCurrency(item.remainingAmount)}
+                                            Allocated {formatCurrency(item.allocatedAmount)}
                                         </Typography>
                                     ) : null}
                                 </Box>
@@ -342,25 +451,12 @@ export function SalaryAllocatorPage() {
                                     <Typography fontWeight={700}>
                                         {formatCurrency(item.amount)}
                                     </Typography>
-                                    {selectedSourceTransactionId ? (
+                                    {sourceTransaction ? (
                                         <Button
                                             variant="outlined"
                                             size="small"
                                             disabled={item.remainingAmount <= 0}
-                                            onClick={() => {
-                                                navigate("/transactions", {
-                                                    state: {
-                                                        transactionPrefill: {
-                                                            type: "expense",
-                                                            amount: item.remainingAmount,
-                                                            user: selectedUser,
-                                                            note: `Allocated from Salary #${selectedSourceTransactionId} - ${item.label}`,
-                                                            source_salary_transaction_id: String(selectedSourceTransactionId),
-                                                            salary_allocation_item_id: String(item.id)
-                                                        }
-                                                    }
-                                                });
-                                            }}
+                                            onClick={() => openAllocationDialog(item)}
                                         >
                                             {item.remainingAmount > 0 ? "Allocate" : "Allocated"}
                                         </Button>
@@ -381,17 +477,70 @@ export function SalaryAllocatorPage() {
                 onClose={() => setIsEditDialogOpen(false)}
                 allocation={selectedAllocation}
                 allocationItems={selectedAllocationItems}
-                users={users}
                 onSaved={(savedAllocation) => {
-                    setSelectedUser(String(savedAllocation.user || selectedUser));
                     setSelectedAllocationId(String(savedAllocation.id || ""));
                 }}
                 saveSalaryAllocationLocally={saveSalaryAllocationLocally}
                 saveSalaryAllocationItemLocally={saveSalaryAllocationItemLocally}
                 removeSalaryAllocationItemLocally={removeSalaryAllocationItemLocally}
-                setError={setError}
                 setMessage={setMessage}
                 setIsSaving={setIsSaving}
+                isSaving={isSaving}
+            />
+
+            {sourceTransaction ? (
+                <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2.5 }}>
+                    <Stack spacing={1.25}>
+                        <Typography variant="subtitle1" fontWeight={700}>
+                            Allocation History
+                        </Typography>
+                        {currentSourceHistory
+                            .sort((left, right) => String(right.allocated_at || "").localeCompare(String(left.allocated_at || "")))
+                            .map((item) => (
+                                <Stack key={item.id} direction="row" justifyContent="space-between" spacing={2}>
+                                    <Box>
+                                        <Typography fontWeight={600}>
+                                            {item.type === "transfer" ? "Transfer" : "Expense"} • {formatCurrency(item.amount)}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {item.allocated_at || ""} • {item.note || "No note"}
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="body2" color="text.secondary">
+                                        #{item.allocated_transaction_id}
+                                    </Typography>
+                                </Stack>
+                            ))}
+                        {!currentSourceHistory.length ? (
+                            <Typography color="text.secondary">
+                                No allocation history yet.
+                            </Typography>
+                        ) : null}
+                    </Stack>
+                </Paper>
+            ) : null}
+
+            <AllocateAmountDialog
+                open={Boolean(allocationDialogItem)}
+                onClose={closeAllocationDialog}
+                onAllocate={handleAllocateSubmit}
+                allocationDialogItem={allocationDialogItem}
+                allocationForm={allocationForm}
+                setAllocationForm={setAllocationForm}
+                isSaving={isSaving}
+                sourceTransaction={sourceTransaction}
+                fromAccount={fromAccount}
+                fromAccountName={fromAccountName}
+                selectedAllocateAmount={allocationDialogItem?.remainingAmount}
+                expenseCategories={expenseCategories}
+                accounts={accounts}
+                accountTypes={accountTypes}
+                users={users}
+                accountNameById={accountNameById}
+                tags={tags}
+                isTagsMenuOpen={isTagsMenuOpen}
+                setIsTagsMenuOpen={setIsTagsMenuOpen}
+                formatCurrency={formatCurrency}
             />
         </Stack>
     );

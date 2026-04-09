@@ -57,8 +57,7 @@ function normaliseSalaryAllocation(allocation) {
     return {
         ...allocation,
         id: cleanValue(allocation.id),
-        name: cleanValue(allocation.name),
-        user: cleanValue(allocation.user)
+        name: cleanValue(allocation.name)
     };
 }
 
@@ -83,6 +82,24 @@ function normaliseUpcomingPayment(payment) {
         note: cleanValue(payment.note),
         category_id: cleanValue(payment.category_id),
         status: String(cleanValue(payment.status) || "scheduled").toLowerCase()
+    };
+}
+
+function normaliseSalaryAllocationHistory(item) {
+    return {
+        ...item,
+        id: cleanValue(item.id),
+        source_transaction_id: cleanValue(item.source_transaction_id),
+        allocation_id: cleanValue(item.allocation_id),
+        allocation_item_id: cleanValue(item.allocation_item_id),
+        allocated_transaction_id: cleanValue(item.allocated_transaction_id),
+        user: cleanValue(item.user),
+        type: cleanValue(item.type),
+        amount: Number(cleanValue(item.amount) || 0),
+        account_id: cleanValue(item.account_id),
+        transfer_account_id: cleanValue(item.transfer_account_id),
+        note: cleanValue(item.note),
+        allocated_at: cleanValue(item.allocated_at)
     };
 }
 
@@ -145,6 +162,7 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
     const [accountTypes, setAccountTypes] = useState([]);
     const [salaryAllocations, setSalaryAllocations] = useState([]);
     const [salaryAllocationItems, setSalaryAllocationItems] = useState([]);
+    const [salaryAllocationHistory, setSalaryAllocationHistory] = useState([]);
     const [upcomingPayments, setUpcomingPayments] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const hiddenAtRef = useRef(0);
@@ -163,6 +181,7 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
             setAccountTypes(data.accountTypes.map(normaliseAccountType));
             setSalaryAllocations((data.salaryAllocations || []).map(normaliseSalaryAllocation));
             setSalaryAllocationItems((data.salaryAllocationItems || []).map(normaliseSalaryAllocationItem));
+            setSalaryAllocationHistory((data.salaryAllocationHistory || []).map(normaliseSalaryAllocationHistory));
             setUpcomingPayments((data.upcomingPayments || []).map(normaliseUpcomingPayment));
         } catch (err) {
             setError(err.message);
@@ -253,6 +272,10 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         setUpcomingPayments((await fetchData("getUpcomingPayments")).map(normaliseUpcomingPayment));
     }
 
+    async function refreshSalaryAllocationHistory() {
+        setSalaryAllocationHistory((await fetchData("getSalaryAllocationHistory")).map(normaliseSalaryAllocationHistory));
+    }
+
     function saveCategoryLocally(category) {
         const normalised = normaliseCategory(category);
         setCategories((current) => upsertById(current, normalised));
@@ -310,6 +333,12 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         return normalised;
     }
 
+    function saveSalaryAllocationHistoryLocally(item) {
+        const normalised = normaliseSalaryAllocationHistory(item);
+        setSalaryAllocationHistory((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
     async function handleDelete(action, id) {
         setIsSaving(true);
         setError("");
@@ -323,6 +352,12 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
                 if (deletedTransaction) {
                     setTransactions((current) => removeById(current, id));
                     setAccounts((current) => applyTransactionToAccounts(current, deletedTransaction, "reverse"));
+                    setSalaryAllocationHistory((current) =>
+                        current.filter((item) =>
+                            String(item.allocated_transaction_id || "") !== String(id)
+                            && String(item.source_transaction_id || "") !== String(id)
+                        )
+                    );
                 }
             } else if (action === "deleteCategory") {
                 setCategories((current) => removeById(current, id));
@@ -360,6 +395,7 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         accountTypes,
         salaryAllocations,
         salaryAllocationItems,
+        salaryAllocationHistory,
         upcomingPayments,
         isLoading,
         refreshTransactions,
@@ -368,6 +404,7 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         refreshAccounts,
         refreshSalaryAllocations,
         refreshSalaryAllocationItems,
+        refreshSalaryAllocationHistory,
         refreshUpcomingPayments,
         handleDelete,
         saveCategoryLocally,
@@ -376,6 +413,7 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         saveTransactionLocally,
         saveSalaryAllocationLocally,
         saveSalaryAllocationItemLocally,
+        saveSalaryAllocationHistoryLocally,
         removeSalaryAllocationItemLocally,
         saveUpcomingPaymentLocally
     };

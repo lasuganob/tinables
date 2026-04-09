@@ -20,6 +20,7 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="salary-allocator" element={<SalaryAllocatorPage />} />
+            <Route path="salary-allocator/:id" element={<SalaryAllocatorPage />} />
             <Route path="budgets" element={<BudgetsPage />} />
             <Route path="upcoming-dues" element={<UpcomingPaymentsPage />} />
             <Route path="managers">
