@@ -6,6 +6,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import "./styles.css";
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 registerSW({ immediate: true });
 
