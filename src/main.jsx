@@ -37,6 +37,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <CssBaseline />
         <App />
+        <SpeedInsights />
       </LocalizationProvider>
     </ThemeProvider>
   </React.StrictMode>
