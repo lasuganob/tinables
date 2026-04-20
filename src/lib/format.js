@@ -23,6 +23,76 @@ export function getCurrentMonthInAppTimeZone() {
   return getTodayInAppTimeZone().slice(0, 7);
 }
 
+function padDatePart(value) {
+  return String(value).padStart(2, "0");
+}
+
+export function formatDateKey(value) {
+  const parsedDate = value instanceof Date ? value : parseDateValue(value);
+
+  if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return [
+    parsedDate.getFullYear(),
+    padDatePart(parsedDate.getMonth() + 1),
+    padDatePart(parsedDate.getDate())
+  ].join("-");
+}
+
+export function getWeekStart(value) {
+  const parsedDate = value instanceof Date ? value : parseDateValue(value);
+
+  if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  const weekStart = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+  const dayOfWeek = weekStart.getDay();
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  weekStart.setDate(weekStart.getDate() - daysFromMonday);
+
+  return weekStart;
+}
+
+export function getWeekStartValue(value) {
+  const weekStart = getWeekStart(value);
+  return weekStart ? formatDateKey(weekStart) : "";
+}
+
+export function getWeekEndValue(value) {
+  const weekStart = getWeekStart(value);
+
+  if (!weekStart) {
+    return "";
+  }
+
+  const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  return formatDateKey(weekEnd);
+}
+
+export function getCurrentWeekStartInAppTimeZone() {
+  return getWeekStartValue(getTodayInAppTimeZone());
+}
+
+export function isDateWithinWeek(dateValue, weekStartValue) {
+  if (!weekStartValue) {
+    return true;
+  }
+
+  const normalizedDate = formatDateKey(dateValue);
+  const normalizedWeekStart = getWeekStartValue(weekStartValue);
+  const normalizedWeekEnd = getWeekEndValue(weekStartValue);
+
+  if (!normalizedDate || !normalizedWeekStart || !normalizedWeekEnd) {
+    return false;
+  }
+
+  return normalizedDate >= normalizedWeekStart && normalizedDate <= normalizedWeekEnd;
+}
+
 export function parseDateValue(value) {
   if (!value) {
     return null;

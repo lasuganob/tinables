@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-    Box, Button, Paper, Skeleton, Stack, TablePagination, Typography,
+    Button, Paper, Skeleton, Stack, TablePagination, TextField, Typography,
     useMediaQuery, useTheme
 } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -45,6 +45,8 @@ export function RecentTransactionsSection({
     const [activeTransaction, setActiveTransaction] = useState(null);
     const [showInlineTransactionEditor, setShowInlineTransactionEditor] = useState(false);
     const [pendingDeleteTransaction, setPendingDeleteTransaction] = useState(null);
+    const [transactionSearch, setTransactionSearch] = useState("");
+    const [debouncedTransactionSearch, setDebouncedTransactionSearch] = useState("");
 
     useEffect(() => {
         if (!showInlineTransactionEditor) return;
@@ -56,6 +58,18 @@ export function RecentTransactionsSection({
         setShowInlineTransactionEditor(true);
     }, [transactionEditorTrigger]);
 
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            setDebouncedTransactionSearch(transactionSearch);
+        }, 300);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [transactionSearch]);
+
+    useEffect(() => {
+        setPage(0);
+    }, [debouncedTransactionSearch]);
+
     const handleChangePage = (event, newPage) => setPage(newPage);
 
     const handleChangeRowsPerPage = (event) => {
@@ -63,8 +77,28 @@ export function RecentTransactionsSection({
         setPage(0);
     };
 
+    const filteredTransactions = useMemo(() => {
+        const query = debouncedTransactionSearch.trim().toLowerCase();
+
+        if (!query) {
+            return visibleTransactions;
+        }
+
+        return visibleTransactions.filter((transaction) => {
+            const categoryLabel = transaction.type === "transfer"
+                ? `Transfer: ${accountNameById.get(String(transaction.account_id)) || "Unknown"} -> ${accountNameById.get(String(transaction.transfer_account_id)) || "Unknown"}`
+                : categoryNameById.get(String(transaction.category_id)) || "Unknown";
+            const tagLabel = (transaction.tags || [])
+                .map((tagValue) => tagNameById.get(String(tagValue)) || String(tagValue))
+                .join(" ");
+            const noteLabel = String(transaction.note || "");
+
+            return [categoryLabel, tagLabel, noteLabel].some((value) => value.toLowerCase().includes(query));
+        });
+    }, [visibleTransactions, debouncedTransactionSearch, accountNameById, categoryNameById, tagNameById]);
+
     const sortedTransactions = useMemo(() => {
-        const items = [...visibleTransactions];
+        const items = [...filteredTransactions];
         items.sort((left, right) => {
             if (transactionSort.key === "category") {
                 const leftName = categoryNameById.get(String(left.category_id)) || "Unknown";
@@ -86,7 +120,7 @@ export function RecentTransactionsSection({
             return transactionSort.direction === "asc" ? idDifference : -idDifference;
         });
         return items;
-    }, [visibleTransactions, transactionSort, categoryNameById]);
+    }, [filteredTransactions, transactionSort, categoryNameById]);
 
     const paginatedTransactions = useMemo(() => {
         const start = page * rowsPerPage;
@@ -202,6 +236,16 @@ export function RecentTransactionsSection({
                         </Stack>
                     </Paper>
                 ) : null}
+
+                <TextField
+                    fullWidth
+                    size="small"
+                    label="Search transactions"
+                    placeholder="Filter by category, tag, or note"
+                    value={transactionSearch}
+                    onChange={(event) => setTransactionSearch(event.target.value)}
+                    sx={{ mb: { xs: 1.5, sm: 2 } }}
+                />
 
                 {isViewLoading ? (
                     isMobile ? (

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { getCurrentMonthInAppTimeZone, parseDateValue } from "../lib/format";
+import { getCurrentMonthInAppTimeZone, getCurrentWeekStartInAppTimeZone, parseDateValue } from "../lib/format";
 
 const AppFiltersContext = createContext(null);
 
@@ -9,6 +9,7 @@ export function AppFiltersProvider({ transactions, children }) {
   const [dateFilter, setDateFilter] = useState({
     mode: "month",
     month: getCurrentMonthInAppTimeZone(),
+    week: getCurrentWeekStartInAppTimeZone(),
     year: "",
     startDate: "",
     endDate: "",
@@ -45,6 +46,7 @@ export function AppFiltersProvider({ transactions, children }) {
     setDateFilter({
       mode: "month",
       month: getCurrentMonthInAppTimeZone(),
+      week: getCurrentWeekStartInAppTimeZone(),
       year: "",
       startDate: "",
       endDate: "",

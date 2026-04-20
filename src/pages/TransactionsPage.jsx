@@ -6,7 +6,7 @@ import { useAppFeedbackContext } from "../context/AppDataContext";
 import { useAppFiltersContext } from "../context/AppFiltersContext";
 import { useTransactionForm } from "../hooks/useTransactionForm";
 import { fallbackAccountTypes } from "../constants/defaults";
-import { formatCurrency, formatDate } from "../lib/format";
+import { formatCurrency, formatDate, isDateWithinWeek } from "../lib/format";
 import { RecentTransactionsSection } from "../sections/RecentTransactionsSection";
 import { postData } from "../api/googleSheets";
 import { DialogTitleWithClose } from "../components/DialogTitleWithClose";
@@ -120,6 +120,8 @@ export function TransactionsPage() {
       const d = String(t.date || "");
       if (dateFilter.mode === "month" && dateFilter.month)
         return d.slice(0, 7) === dateFilter.month;
+      if (dateFilter.mode === "week" && dateFilter.week)
+        return isDateWithinWeek(d, dateFilter.week);
       if (dateFilter.mode === "year" && dateFilter.year)
         return d.slice(0, 4) === dateFilter.year;
       if (dateFilter.mode === "range") {

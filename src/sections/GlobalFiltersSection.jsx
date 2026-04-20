@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Box, Button, Collapse, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
 import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { getCurrentMonthInAppTimeZone } from "../lib/format";
+import { WeekPickerInput } from "../components/WeekPickerInput";
+import { getCurrentMonthInAppTimeZone, getCurrentWeekStartInAppTimeZone } from "../lib/format";
 
 export function GlobalFiltersSection({
     selectedUser,
@@ -57,6 +58,7 @@ export function GlobalFiltersSection({
                         >
                             <MenuItem value="all">All dates</MenuItem>
                             <MenuItem value="month">By month</MenuItem>
+                            <MenuItem value="week">By week</MenuItem>
                             <MenuItem value="year">By year</MenuItem>
                             <MenuItem value="range">Date range</MenuItem>
                         </Select>
@@ -69,6 +71,14 @@ export function GlobalFiltersSection({
                             value={toPickerValue(dateFilter.month ? `${dateFilter.month}-01` : "")}
                             onChange={(value) => updateDateFilter("month", value ? value.format("YYYY-MM") : "")}
                             slotProps={{ textField: { fullWidth: true, size: "small" } }}
+                        />
+                    ) : null}
+
+                    {dateFilter.mode === "week" ? (
+                        <WeekPickerInput
+                            label="Week"
+                            value={dateFilter.week}
+                            onChange={(value) => updateDateFilter("week", value)}
                         />
                     ) : null}
 
@@ -118,7 +128,14 @@ export function GlobalFiltersSection({
                         size="small"
                         onClick={() => {
                             setSelectedUser("");
-                            setDateFilter({ mode: "month", month: getCurrentMonthInAppTimeZone(), year: "", startDate: "", endDate: "" });
+                            setDateFilter({
+                                mode: "month",
+                                month: getCurrentMonthInAppTimeZone(),
+                                week: getCurrentWeekStartInAppTimeZone(),
+                                year: "",
+                                startDate: "",
+                                endDate: ""
+                            });
                         }}
                         sx={{
                             minHeight: 40,

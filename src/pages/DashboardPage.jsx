@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Stack, Typography } from "@mui/material";
 import { useAppDataContext } from "../context/AppDataContext";
 import { useAppFiltersContext } from "../context/AppFiltersContext";
+import { isDateWithinWeek } from "../lib/format";
 import {
   totalByType,
   buildLineChartData,
@@ -54,6 +55,8 @@ export function DashboardPage() {
       const d = String(t.date || "");
       if (dateFilter.mode === "month" && dateFilter.month)
         return d.slice(0, 7) === dateFilter.month;
+      if (dateFilter.mode === "week" && dateFilter.week)
+        return isDateWithinWeek(d, dateFilter.week);
       if (dateFilter.mode === "year" && dateFilter.year)
         return d.slice(0, 4) === dateFilter.year;
       if (dateFilter.mode === "range") {
