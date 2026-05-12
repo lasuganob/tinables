@@ -1,83 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
-import { Button, Dialog, DialogActions, DialogContent, Stack, Typography } from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+import { Stack, Typography } from "@mui/material";
 import { useAppDataContext } from "../context/AppDataContext";
 import { useAppFeedbackContext } from "../context/AppDataContext";
 import { useAppFiltersContext } from "../context/AppFiltersContext";
-import { useTransactionForm } from "../hooks/useTransactionForm";
-import { fallbackAccountTypes } from "../constants/defaults";
 import { formatCurrency, formatDate, isDateWithinWeek } from "../lib/format";
 import { RecentTransactionsSection } from "../sections/RecentTransactionsSection";
-import { postData } from "../api/googleSheets";
-import { DialogTitleWithClose } from "../components/DialogTitleWithClose";
+import { useTransactionDialogContext } from "../context/TransactionDialogContext";
 
 export function TransactionsPage() {
   const {
     transactions,
     categories,
     tags,
-    users,
     accounts,
-    accountTypes,
-    upcomingPayments,
     isLoading,
     handleDelete,
-    saveTransactionLocally,
-    saveUpcomingPaymentLocally,
   } = useAppDataContext();
 
-  const { isSaving, setError, setMessage, setIsSaving } = useAppFeedbackContext();
-  const { selectedUser, dateFilter, toPickerValue, isFilterLoading } =
+  const { isSaving } = useAppFeedbackContext();
+  const { selectedUser, dateFilter, isFilterLoading } =
     useAppFiltersContext();
-
-  const feedback = { setError, setMessage, setIsSaving };
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [showSalaryAllocatorDialog, setShowSalaryAllocatorDialog] = useState(false);
-  const [pendingSalaryAllocatorPayload, setPendingSalaryAllocatorPayload] = useState(null);
-  const [transactionEditorTrigger, setTransactionEditorTrigger] = useState(0);
+  const { openEditTransaction } = useTransactionDialogContext();
 
   const isViewLoading = isLoading || isFilterLoading;
-
-  const {
-    transactionForm,
-    setTransactionForm,
-    handleTransactionSubmit,
-    resetTransactionForm,
-  } = useTransactionForm({
-    selectedUser,
-    users,
-    transactions,
-    accounts,
-    categories,
-    saveTransactionLocally,
-    ...feedback,
-  });
-
-  useEffect(() => {
-    const prefill = location.state?.transactionPrefill;
-
-    if (!prefill) {
-      return;
-    }
-
-    setTransactionForm((current) => ({
-      ...current,
-      ...prefill,
-      amount: String(prefill.amount ?? current.amount ?? ""),
-      category_id: String(prefill.category_id ?? current.category_id ?? ""),
-      account_id: String(prefill.account_id ?? current.account_id ?? ""),
-      source_salary_transaction_id: String(prefill.source_salary_transaction_id ?? ""),
-      salary_allocation_item_id: String(prefill.salary_allocation_item_id ?? ""),
-      is_salary_allocation_base: Number(prefill.is_salary_allocation_base ?? 0),
-      user: String(prefill.user ?? current.user ?? ""),
-      tags: Array.isArray(prefill.tags) ? prefill.tags : current.tags,
-      upcomingPaymentId: String(prefill.upcomingPaymentId ?? "")
-    }));
-    setTransactionEditorTrigger((current) => current + 1);
-
-    navigate(location.pathname, { replace: true, state: {} });
-  }, [location.pathname, location.state, navigate, setTransactionForm]);
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((c) => [String(c.id), c.name])),
@@ -90,25 +35,6 @@ export function TransactionsPage() {
   const tagNameById = useMemo(
     () => new Map(tags.map((t) => [String(t.id), t.name])),
     [tags],
-  );
-
-  const userNameById = useMemo(
-    () => new Map(users.map((u) => [String(u.id), u.name])),
-    [users],
-  );
-
-  const filteredCategories = useMemo(
-    () =>
-      categories.filter(
-        (c) =>
-          String(c.type || "")
-            .trim()
-            .toLowerCase() ===
-          String(transactionForm.type || "")
-            .trim()
-            .toLowerCase(),
-      ),
-    [categories, transactionForm.type],
   );
 
   const visibleTransactions = useMemo(() => {
@@ -132,81 +58,6 @@ export function TransactionsPage() {
     });
   }, [dateFilter, selectedUser, transactions]);
 
-  const maxTransactionId = useMemo(
-    () => transactions.reduce((max, t) => Math.max(max, t.id), 0),
-    [transactions],
-  );
-
-  const transactionFormTagIds = useMemo(
-    () =>
-      (transactionForm.tags || []).map((tagValue) => {
-        const directId = String(tagValue);
-        if (tagNameById.has(directId)) return directId;
-        const matched = tags.find((tag) => tag.name === tagValue);
-        return matched ? String(matched.id) : directId;
-      }),
-    [transactionForm.tags, tagNameById, tags],
-  );
-
-  const availableAccounts = useMemo(() => {
-    return accounts.filter((account) => {
-      if (
-        Number(account.is_active) !== 1 &&
-        String(account.id) !== String(transactionForm.account_id) &&
-        String(account.id) !== String(transactionForm.transfer_account_id)
-      ) {
-        return false;
-      }
-      if (!selectedUser) return true;
-      const owner = userNameById.get(String(account.user)) || "";
-      return !account.user || owner === selectedUser;
-    });
-  }, [accounts, selectedUser, transactionForm.account_id, transactionForm.transfer_account_id, userNameById]);
-
-  const accountTypeOptions = useMemo(
-    () => (accountTypes.length ? accountTypes : fallbackAccountTypes),
-    [accountTypes],
-  );
-
-  async function handleTransactionSubmitWithSideEffects() {
-    const result = await handleTransactionSubmit();
-
-    if (!result?.ok) {
-      return result;
-    }
-
-    if (result.upcomingPaymentId) {
-      try {
-        await postData("markUpcomingPaymentPaid", {
-          id: result.upcomingPaymentId,
-          status: "paid"
-        });
-        const existingPayment = upcomingPayments.find(
-          (item) => String(item.id) === String(result.upcomingPaymentId)
-        );
-        if (existingPayment) {
-          saveUpcomingPaymentLocally({
-            ...existingPayment,
-            status: "paid"
-          });
-        }
-      } catch (error) {
-        setError(error.message);
-      }
-    }
-
-    if (result.isSalaryTransaction || result.isSalaryAllocationBase) {
-      setPendingSalaryAllocatorPayload({
-        amount: result.salaryAmount,
-        user: result.salaryUser,
-        transactionId: result.transactionId
-      });
-      setShowSalaryAllocatorDialog(true);
-    }
-
-    return result;
-  }
-
   return (
     <Stack spacing={3}>
       <Stack spacing={0.5}>
@@ -225,61 +76,11 @@ export function TransactionsPage() {
         categoryNameById={categoryNameById}
         accountNameById={accountNameById}
         tagNameById={tagNameById}
-        transactionForm={transactionForm}
-        setTransactionForm={setTransactionForm}
         isSaving={isSaving}
-        filteredCategories={filteredCategories}
-        accounts={availableAccounts}
-        accountTypes={accountTypeOptions}
-        users={users}
-        transactionFormTagIds={transactionFormTagIds}
-        tags={tags}
-        handleTransactionSubmit={handleTransactionSubmitWithSideEffects}
-        resetTransactionForm={resetTransactionForm}
         handleDelete={handleDelete}
-        toPickerValue={toPickerValue}
         visibleTransactions={visibleTransactions}
-        allTransactions={transactions}
-        allCategories={categories}
-        maxId={maxTransactionId}
-        transactionEditorTrigger={transactionEditorTrigger}
+        onEditTransaction={openEditTransaction}
       />
-
-      <Dialog
-        open={showSalaryAllocatorDialog}
-        onClose={() => setShowSalaryAllocatorDialog(false)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitleWithClose onClose={() => setShowSalaryAllocatorDialog(false)}>
-          Salary Added
-        </DialogTitleWithClose>
-        <DialogContent>
-          <Typography>
-            You added your salary. View breakdown?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowSalaryAllocatorDialog(false)}>
-            No
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              setShowSalaryAllocatorDialog(false);
-              navigate(`/salary-allocator/${pendingSalaryAllocatorPayload?.transactionId || ""}`);
-            }}
-            sx={{
-              bgcolor: "#4a6555",
-              "&:hover": {
-                bgcolor: "#3f594b"
-              }
-            }}
-          >
-            Yes
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Stack>
   );
 }
