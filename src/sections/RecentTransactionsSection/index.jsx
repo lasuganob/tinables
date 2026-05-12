@@ -132,10 +132,6 @@ export function RecentTransactionsSection({
     return (
         <>
             <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2, md: 3 }, border: "1px solid", borderColor: "divider" }}>
-                <Stack sx={{ mb: { xs: 1.5, sm: 2 } }}>
-                    <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>Transactions</Typography>
-                </Stack>
-
                 <TextField
                     fullWidth
                     size="small"

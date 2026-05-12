@@ -3,7 +3,7 @@ import { AppProviders } from "./context/AppProviders";
 import { AppShell } from "./layout/AppShell";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
-import { BudgetsPage } from "./pages/BudgetsPage";
+import { BudgetsPage } from "./pages/budget/BudgetsPage";
 import { UpcomingPaymentsPage } from "./pages/UpcomingPaymentsPage";
 import { CategoriesPage } from "./pages/managers/CategoriesPage";
 import { TagsPage } from "./pages/managers/TagsPage";
