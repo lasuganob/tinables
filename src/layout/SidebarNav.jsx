@@ -22,8 +22,9 @@ import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import SellRoundedIcon from "@mui/icons-material/SellRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import PieChartRoundedIcon from "@mui/icons-material/PieChartRounded";
+import { GlobalFiltersControls } from "../components/GlobalFiltersControls";
 
-const DRAWER_WIDTH = 220;
+const DRAWER_WIDTH = 260;
 
 const NAV_ITEMS = [
   { label: "Dashboard", to: "/", icon: <DashboardRoundedIcon /> },
@@ -218,6 +219,8 @@ export function SidebarNav({ mobileOpen, onMobileClose }) {
           })}
         </List>
       </Box>
+
+      <GlobalFiltersControls />
     </Box>
   );
 

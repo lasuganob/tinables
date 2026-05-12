@@ -4,7 +4,7 @@ export function SectionSkeleton({ lines = 4 }) {
     return (
         <Stack spacing={2}>
             {Array.from({ length: lines }).map((_, index) => (
-                <Skeleton key={index} variant="rounded" height={index === 0 ? 52 : 44} />
+                <Skeleton key={index} variant="rounded" height={index === 0 ? 35 : 25} />
             ))}
         </Stack>
     );

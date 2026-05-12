@@ -3,16 +3,32 @@ import HelpIcon from '@mui/icons-material/Help';
 import { useEffect, useState } from "react";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 
 function getStorageKey(storageKey, label) {
     return storageKey || `tinables:stat-card-visibility:${String(label).toLowerCase().replace(/\s+/g, "-")}`;
 }
 
-export function StatCard({ label, value, tone = "neutral", actionLabel = "", onAction, storageKey = "" }) {
+export function StatCard({
+    label,
+    value,
+    tone = "neutral",
+    actionLabel = "",
+    onAction,
+    storageKey = "",
+    insight = "",
+    insightTone = "neutral"
+}) {
     const toneStyles = {
         income: { color: "white", fontWeight: "bold", bgcolor: "success.main" },
         expense: { color: "white", fontWeight: "bold", bgcolor: "error.main" },
         neutral: { color: "white", fontWeight: "bold", bgcolor: "secondary.main" }
+    };
+    const insightColors = {
+        positive: "success.main",
+        negative: "error.main",
+        neutral: "text.secondary"
     };
     const resolvedStorageKey = getStorageKey(storageKey, label);
     const [showTotal, setShowTotal] = useState(() => {
@@ -69,6 +85,18 @@ export function StatCard({ label, value, tone = "neutral", actionLabel = "", onA
                             </Button>
                         ) : null}
                     </Stack>
+                    {insight ? (
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                            {insightTone === "positive" ? <TrendingUpIcon color="success" /> : insightTone === "negative" ? <TrendingDownIcon color="error" /> : null}
+                            <Typography
+                                variant="caption"
+                                color={insightColors[insightTone] || insightColors.neutral}
+                                sx={{ minHeight: 18 }}
+                            >
+                                {insight}
+                            </Typography>
+                        </Stack>
+                    ) : null}
                 </Stack>
             </CardContent>
         </Card>

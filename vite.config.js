@@ -9,10 +9,10 @@ export default defineConfig({
         manualChunks: {
           mui: ["@mui/material", "@mui/icons-material"],
           pickers: ["@mui/x-date-pickers", "dayjs"],
-          charts: ["highcharts", "highcharts-react-official"]
-        }
-      }
-    }
+          charts: ["highcharts", "highcharts-react-official"],
+        },
+      },
+    },
   },
   plugins: [
     react(),
@@ -24,17 +24,18 @@ export default defineConfig({
         "icon-512.png",
         "pwa-192x192.png",
         "pwa-512x512.png",
-        "apple-touch-icon.png"
+        "apple-touch-icon.png",
       ],
       workbox: {
         navigateFallback: "/index.html",
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,json}"]
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,json}"],
       },
       manifest: {
         id: "/",
         name: "Tinables Cashflow",
         short_name: "Tinables",
-        description: "Cashflow tracking PWA backed by Google Sheets and Apps Script.",
+        description:
+          "Cashflow tracking PWA backed by Google Sheets and Apps Script.",
         theme_color: "#0f766e",
         background_color: "#f4f7fb",
         display: "standalone",
@@ -44,22 +45,28 @@ export default defineConfig({
           {
             src: "/pwa-192x192.png",
             sizes: "192x192",
-            type: "image/png"
+            type: "image/png",
           },
           {
             src: "/pwa-512x512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any"
+            purpose: "any",
           },
           {
             src: "/pwa-512x512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable"
-          }
-        ]
-      }
-    })
-  ]
+            purpose: "any maskable",
+          },
+        ],
+      },
+    }),
+  ],
+  server: {
+    host: true,
+  },
+  preview: {
+    host: true,
+  },
 });

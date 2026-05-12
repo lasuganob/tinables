@@ -28,10 +28,11 @@ export function SummaryStatsSection({
     accountsTotal,
     incomeTotal,
     expenseTotal,
+    netCashflowTotal,
     incomeBreakdown,
-    topExpenseCategories,
     users,
-    accountTypes
+    accountTypes,
+    statInsights = {}
 }) {
     const [showIncomeBreakdown, setShowIncomeBreakdown] = useState(false);
     const [expandedTypePanels, setExpandedTypePanels] = useState({ "1": false, "2": false, "3": true, "4": false });
@@ -90,14 +91,14 @@ export function SummaryStatsSection({
                 sx={{
                     display: "grid",
                     gap: { xs: 1.25, sm: 2 },
-                    gridTemplateColumns: { xs: "1fr 1fr", lg: "1fr 1fr 1fr", xl: "1.1fr 1fr 1fr 1.2fr" }
+                    gridTemplateColumns: { xs: "1fr 1fr", lg: "repeat(4, 1fr)" }
                 }}>
                 {isViewLoading ? (
                     <>
                         <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2 }}><SectionSkeleton lines={2} /></Card>
                         <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2 }}><SectionSkeleton lines={2} /></Card>
                         <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2 }}><SectionSkeleton lines={2} /></Card>
-                        <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2 }}><SectionSkeleton lines={4} /></Card>
+                        <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", p: 2 }}><SectionSkeleton lines={2} /></Card>
                     </>
                 ) : (
                     <>
@@ -108,52 +109,33 @@ export function SummaryStatsSection({
                             actionLabel="View breakdown"
                             onAction={() => setShowIncomeBreakdown(true)}
                             storageKey="dashboard-accounts-summary-visible"
+                            insight={statInsights.accounts?.text}
+                            insightTone={statInsights.accounts?.tone}
                         />
                         <StatCard
                             label="Income"
                             value={formatCurrency(incomeTotal)}
                             tone="income"
                             storageKey="dashboard-income-visible"
+                            insight={statInsights.income?.text}
+                            insightTone={statInsights.income?.tone}
                         />
                         <StatCard
                             label="Expenses"
                             value={formatCurrency(expenseTotal)}
                             tone="expense"
                             storageKey="dashboard-expenses-visible"
+                            insight={statInsights.expenses?.text}
+                            insightTone={statInsights.expenses?.tone}
                         />
-                        <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", gridColumn: { xs: "1 / -1", xl: "auto" } }}>
-                            <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-                                <Stack spacing={{ xs: 1, sm: 1.5 }}>
-                                    <Typography variant="overline" color="text.secondary" fontWeight={700} sx={{ fontSize: { xs: "0.68rem", sm: "0.75rem" } }}>
-                                        Top 3 Expense Categories
-                                    </Typography>
-                                    {topExpenseCategories.length ? (
-                                        <Stack spacing={1}>
-                                            {topExpenseCategories.map((category, index) => (
-                                                <Stack
-                                                    key={category.name}
-                                                    direction="row"
-                                                    justifyContent="space-between"
-                                                    spacing={2}
-                                                    alignItems="center"
-                                                >
-                                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}>
-                                                        {index + 1}. {category.name}
-                                                    </Typography>
-                                                    <Typography variant="body2" fontWeight={700} sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}>
-                                                        {formatCurrency(category.value)}
-                                                    </Typography>
-                                                </Stack>
-                                            ))}
-                                        </Stack>
-                                    ) : (
-                                        <Typography variant="body2" color="text.secondary">
-                                            No expense data for the current filter.
-                                        </Typography>
-                                    )}
-                                </Stack>
-                            </Box>
-                        </Card>
+                        <StatCard
+                            label="Net Cashflow"
+                            value={formatCurrency(netCashflowTotal)}
+                            tone={netCashflowTotal >= 0 ? "income" : "expense"}
+                            storageKey="dashboard-net-cashflow-visible"
+                            insight={statInsights.netCashflow?.text}
+                            insightTone={statInsights.netCashflow?.tone}
+                        />
                     </>
                 )}
             </Box>

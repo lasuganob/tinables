@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-    Button, Paper, Skeleton, Stack, TablePagination, TextField, Typography,
+    Paper, Skeleton, Stack, TablePagination, TextField, Typography,
     useMediaQuery, useTheme
 } from "@mui/material";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import { TableSkeleton } from "../../components/Skeletons";
 import { parseDateValue } from "../../lib/format";
-import { TransactionEditor } from "./TransactionEditor";
 import { TransactionTable } from "./TransactionTable";
 import { MobileTransactionCards } from "./MobileTransactionCards";
 import { TransactionActionMenu } from "./TransactionActionMenu";
@@ -18,23 +16,10 @@ export function RecentTransactionsSection({
     categoryNameById,
     accountNameById,
     tagNameById,
-    transactionForm,
-    setTransactionForm,
     isSaving,
-    filteredCategories,
-    accounts,
-    accountTypes,
-    users,
-    transactionFormTagIds,
-    tags,
-    handleTransactionSubmit,
-    resetTransactionForm,
     handleDelete,
-    toPickerValue,
     visibleTransactions,
-    allTransactions,
-    allCategories,
-    transactionEditorTrigger
+    onEditTransaction
 }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -43,20 +28,9 @@ export function RecentTransactionsSection({
     const [transactionSort, setTransactionSort] = useState({ key: "date", direction: "desc" });
     const [transactionMenuAnchor, setTransactionMenuAnchor] = useState(null);
     const [activeTransaction, setActiveTransaction] = useState(null);
-    const [showInlineTransactionEditor, setShowInlineTransactionEditor] = useState(false);
     const [pendingDeleteTransaction, setPendingDeleteTransaction] = useState(null);
     const [transactionSearch, setTransactionSearch] = useState("");
     const [debouncedTransactionSearch, setDebouncedTransactionSearch] = useState("");
-
-    useEffect(() => {
-        if (!showInlineTransactionEditor) return;
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }, [showInlineTransactionEditor]);
-
-    useEffect(() => {
-        if (!transactionEditorTrigger) return;
-        setShowInlineTransactionEditor(true);
-    }, [transactionEditorTrigger]);
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -155,87 +129,12 @@ export function RecentTransactionsSection({
         }
     }
 
-    async function handleEditorSubmit() {
-        const saved = await handleTransactionSubmit();
-        if (saved?.ok) {
-            setShowInlineTransactionEditor(false);
-        }
-    }
-
-    function openNewTransactionRow() {
-        resetTransactionForm();
-        setShowInlineTransactionEditor(true);
-    }
-
-    function handleEditorCancel() {
-        resetTransactionForm();
-        setShowInlineTransactionEditor(false);
-    }
-
     return (
         <>
             <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2, md: 3 }, border: "1px solid", borderColor: "divider" }}>
-                <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1.25}
-                    justifyContent="space-between"
-                    alignItems={{ xs: "stretch", sm: "center" }}
-                    sx={{ mb: { xs: 1.5, sm: 2 } }}
-                >
+                <Stack sx={{ mb: { xs: 1.5, sm: 2 } }}>
                     <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>Transactions</Typography>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddRoundedIcon />}
-                        onClick={openNewTransactionRow}
-                        disabled={showInlineTransactionEditor}
-                        fullWidth={isMobile}
-                        sx={{
-                            bgcolor: "#4a6555",
-                            "&:hover": { bgcolor: "#3f594b" }
-                        }}
-                    >
-                        Add Entry
-                    </Button>
                 </Stack>
-
-                {showInlineTransactionEditor ? (
-                    <Paper
-                        elevation={0}
-                        sx={{
-                            mb: 2,
-                            p: { xs: 1.25, sm: 1.5, md: 2 },
-                            border: "1px solid",
-                            borderColor: "divider",
-                            backgroundColor: "rgba(15,118,110,0.02)"
-                        }}
-                    >
-                        <Stack spacing={1.25}>
-                            <Typography variant="subtitle2" fontWeight={700}>
-                                {transactionForm.id ? "Edit transaction" : "New transaction"}
-                            </Typography>
-                            <TransactionEditor
-                                transactionForm={transactionForm}
-                                setTransactionForm={setTransactionForm}
-                                isSaving={isSaving}
-                                filteredCategories={filteredCategories}
-                                accounts={accounts}
-                                accountTypes={accountTypes}
-                                users={users}
-                                transactionFormTagIds={transactionFormTagIds}
-                                tags={tags}
-                                formatDate={formatDate}
-                                formatCurrency={formatCurrency}
-                                accountNameById={accountNameById}
-                                tagNameById={tagNameById}
-                                toPickerValue={toPickerValue}
-                                allTransactions={allTransactions}
-                                allCategories={allCategories}
-                                onSubmit={handleEditorSubmit}
-                                onCancel={handleEditorCancel}
-                            />
-                        </Stack>
-                    </Paper>
-                ) : null}
 
                 <TextField
                     fullWidth
@@ -318,8 +217,7 @@ export function RecentTransactionsSection({
                 onClose={closeTransactionMenu}
                 onEdit={(t) => {
                     if (t) {
-                        setTransactionForm(t);
-                        setShowInlineTransactionEditor(true);
+                        onEditTransaction(t);
                     }
                 }}
                 onDelete={(t) => {
