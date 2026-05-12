@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import {
-    Box, Button, Checkbox, Chip, FormControl, FormControlLabel,
+    Autocomplete, Box, Button, Checkbox, Chip, Divider, FormControl, FormControlLabel,
     InputLabel, MenuItem, OutlinedInput, Paper,
-    Select, Stack, Switch, TextField, Typography,
+    Select, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography,
     useMediaQuery, useTheme
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AccountSelector } from "../../components/AccountSelector";
 import { CategorySelector } from "../../components/CategorySelector";
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 export function TransactionEditor({
     transactionForm,
@@ -166,65 +169,99 @@ export function TransactionEditor({
     ) : null;
 
     return (
-        <Box
-            sx={{
-                display: "grid",
-                gap: { xs: 1.25, sm: 1.5, md: 2 },
-                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4, minmax(0, 1fr))" }
-            }}
-        >
-            <DatePicker
-                label="Date"
-                value={toPickerValue(transactionForm.date)}
-                onChange={(value) => setTransactionForm({ ...transactionForm, date: value ? value.format("YYYY-MM-DD") : "" })}
+        <Stack spacing={3}>
+            {/* 1. Transaction Type */}
+            <Box>
+                <ToggleButtonGroup
+                    value={transactionForm.type}
+                    exclusive
+                    onChange={(_, newType) => {
+                        if (newType !== null) {
+                            setTransactionForm({
+                                ...transactionForm,
+                                type: newType,
+                                category_id: "",
+                                source_salary_transaction_id: newType === "transfer"
+                                    ? transactionForm.source_salary_transaction_id
+                                    : "",
+                                salary_allocation_item_id: newType === "expense"
+                                    ? transactionForm.salary_allocation_item_id
+                                    : "",
+                                is_salary_allocation_base: newType === "transfer"
+                                    ? transactionForm.is_salary_allocation_base
+                                    : 0
+                            });
+                        }
+                    }}
+                    fullWidth
+                    size="small"
+                    color="primary"
+                    disabled={isSaving}
+                >
+                    <ToggleButton value="expense" sx={{ py: 1.5, "&.Mui-selected": { color: "white", backgroundColor: "error.main" } }} ><ArrowDownwardIcon />Expense</ToggleButton>
+                    <ToggleButton value="income" sx={{ py: 1.5, "&.Mui-selected": { color: "white", backgroundColor: "primary.main" } }} ><ArrowUpwardIcon />Income</ToggleButton>
+                    <ToggleButton value="transfer" sx={{ py: 1.5, "&.Mui-selected": { color: "white", backgroundColor: "warning.main" } }} ><ArrowForwardIcon />Transfer</ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+
+            {/* 2. Amount */}
+            <TextField
+                label="Amount"
+                type="number"
+                placeholder="₱ 0.00"
+                fullWidth
+                required
                 disabled={isSaving}
-                slotProps={{ textField: { fullWidth: true, required: true, size: "small" } }}
+                value={transactionForm.amount}
+                onChange={(event) => setTransactionForm({ ...transactionForm, amount: event.target.value })}
+                InputProps={{
+                    sx: {
+                        fontSize: "2rem",
+                        fontWeight: "bold",
+                        "& input": { textAlign: "center" }
+                    }
+                }}
             />
 
-            <FormControl fullWidth size="small" disabled={isSaving} required>
-                <InputLabel required>Type</InputLabel>
-                <Select
-                    label="Type"
-                    value={transactionForm.type}
-                    onChange={(event) => setTransactionForm({
-                        ...transactionForm,
-                        type: event.target.value,
-                        category_id: "",
-                        source_salary_transaction_id: event.target.value === "transfer"
-                            ? transactionForm.source_salary_transaction_id
-                            : "",
-                        salary_allocation_item_id: event.target.value === "expense"
-                            ? transactionForm.salary_allocation_item_id
-                            : "",
-                        is_salary_allocation_base: event.target.value === "transfer"
-                            ? transactionForm.is_salary_allocation_base
-                            : 0
-                    })}
-                    required
-                >
-                    <MenuItem value="expense">Expense</MenuItem>
-                    <MenuItem value="income">Income</MenuItem>
-                    <MenuItem value="transfer">Transfer</MenuItem>
-                </Select>
-            </FormControl>
+            {/* 4. Transfer Details (follows Amount) */}
+            {isTransfer && transferDetails}
 
-            {!isTransfer ? (
-                <AccountSelector
-                    label="Account"
-                    value={transactionForm.account_id}
-                    onChange={(value) => setTransactionForm({ ...transactionForm, account_id: value })}
-                    accounts={accounts}
-                    accountTypes={accountTypes}
-                    users={users}
-                    accountNameById={accountNameById}
-                    formatCurrency={formatCurrency}
-                    includeSelectedIds={[transactionForm.account_id]}
+            {/* 3. Date and Account (Inline) */}
+            <Box
+                sx={{
+                    display: "grid",
+                    gap: 2,
+                    gridTemplateColumns: { xs: "1fr", sm: !isTransfer ? "1fr 1fr" : "1fr" }
+                }}
+            >
+                <DatePicker
+                    label="Date"
+                    value={toPickerValue(transactionForm.date)}
+                    onChange={(value) => setTransactionForm({ ...transactionForm, date: value ? value.format("YYYY-MM-DD") : "" })}
                     disabled={isSaving}
-                    required
+                    format="MMM DD, YYYY"
+                    slotProps={{ textField: { fullWidth: true, required: true, size: "small" } }}
                 />
-            ) : null}
 
-            {!isTransfer ? (
+                {!isTransfer && (
+                    <AccountSelector
+                        label="Account"
+                        value={transactionForm.account_id}
+                        onChange={(value) => setTransactionForm({ ...transactionForm, account_id: value })}
+                        accounts={accounts}
+                        accountTypes={accountTypes}
+                        users={users}
+                        accountNameById={accountNameById}
+                        formatCurrency={formatCurrency}
+                        includeSelectedIds={[transactionForm.account_id]}
+                        disabled={isSaving}
+                        required
+                    />
+                )}
+            </Box>
+
+            {/* 5. Category Selector */}
+            {!isTransfer && (
                 <CategorySelector
                     label="Category"
                     value={transactionForm.category_id}
@@ -233,95 +270,83 @@ export function TransactionEditor({
                     required
                     disabled={isSaving}
                 />
-            ) : null}
+            )}
 
-            <FormControl fullWidth size="small" disabled={isSaving} required>
-                <InputLabel required>User</InputLabel>
-                <Select
-                    label="User"
+            {/* 6. User Selector */}
+            <Box>
+                <Typography variant="subtitle2" gutterBottom color="text.secondary" sx={{ mb: 1 }}>
+                    User
+                </Typography>
+                <ToggleButtonGroup
                     value={transactionForm.user}
-                    onChange={(event) => setTransactionForm({ ...transactionForm, user: event.target.value })}
-                    required
-                >
-                    <MenuItem value="">All</MenuItem>
-                    {users.map((user) => (
-                        <MenuItem key={user.id} value={user.name}>{user.name}</MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
-
-            {transferDetails}
-
-            <TextField
-                label="Amount"
-                type="number"
-                size="small"
-                inputProps={{ min: 0, step: "0.01" }}
-                value={transactionForm.amount}
-                onChange={(event) => setTransactionForm({ ...transactionForm, amount: event.target.value })}
-                disabled={isSaving}
-                required
-                fullWidth
-            />
-
-            <FormControl fullWidth size="small" disabled={isSaving}>
-                <InputLabel>Tags</InputLabel>
-                <Select
-                    multiple
-                    open={isTagsMenuOpen}
-                    onOpen={() => setIsTagsMenuOpen(true)}
-                    onClose={() => setIsTagsMenuOpen(false)}
-                    value={transactionFormTagIds}
-                    onChange={(event) => setTransactionForm({ ...transactionForm, tags: event.target.value })}
-                    input={<OutlinedInput label="Tags" />}
-                    MenuProps={{
-                        PaperProps: { sx: { maxHeight: 320 } },
-                        MenuListProps: { sx: { pb: 0 } }
+                    exclusive
+                    onChange={(_, newUser) => {
+                        if (newUser !== null) {
+                            setTransactionForm({ ...transactionForm, user: newUser });
+                        }
                     }}
-                    renderValue={(selected) => (
-                        <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-                            {selected.map((value) => (
-                                <Chip key={value} label={tagNameById.get(String(value)) || String(value)} size="small" />
-                            ))}
-                        </Box>
-                    )}
+                    fullWidth
+                    size="small"
+                    color="primary"
+                    disabled={isSaving}
                 >
-                    {tags.map((tag) => (
-                        <MenuItem key={tag.id} value={String(tag.id)}>{tag.name}</MenuItem>
+                    {users.map((user) => (
+                        <ToggleButton key={user.id} value={user.name}>
+                            {user.name}
+                        </ToggleButton>
                     ))}
-                    <Box sx={{ position: "sticky", bottom: 0, bgcolor: "background.paper", zIndex: 1, p: 1, borderTop: "1px solid", borderColor: "divider" }}>
-                        <Button
+                </ToggleButtonGroup>
+            </Box>
+
+            {/* 7. Optional Fields Divider */}
+            <Divider sx={{ my: 1 }}>
+                <Chip label="Optional Info" size="small" variant="outlined" sx={{ color: "text.secondary" }} />
+            </Divider>
+
+            {/* Tags and Note */}
+            <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr" } }}>
+                <Autocomplete
+                    multiple
+                    fullWidth
+                    disabled={isSaving}
+                    options={tags || []}
+                    getOptionLabel={(option) => option.name || ""}
+                    value={(tags || []).filter((tag) => (transactionFormTagIds || []).includes(String(tag.id)))}
+                    isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                    onChange={(_, newValue) => {
+                        setTransactionForm({
+                            ...transactionForm,
+                            tags: newValue.map((tag) => tag.id)
+                        });
+                    }}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Tags"
+                            placeholder="Add tags"
                             size="small"
-                            variant="contained"
-                            sx={{ minWidth: 88 }}
-                            onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                setIsTagsMenuOpen(false);
-                            }}
-                        >
-                            OK
-                        </Button>
-                    </Box>
-                </Select>
-            </FormControl>
+                        />
+                    )}
+                />
 
-            <TextField
-                label="Note"
-                multiline
-                minRows={isMobile ? 3 : 2}
-                fullWidth
-                size="small"
-                disabled={isSaving}
-                value={transactionForm.note}
-                onChange={(event) => setTransactionForm({ ...transactionForm, note: event.target.value })}
-                sx={{ gridColumn: { md: "1 / -1" } }}
-            />
+                <TextField
+                    label="Note"
+                    multiline
+                    minRows={3}
+                    fullWidth
+                    size="small"
+                    placeholder="What's this for?"
+                    disabled={isSaving}
+                    value={transactionForm.note}
+                    onChange={(event) => setTransactionForm({ ...transactionForm, note: event.target.value })}
+                />
+            </Box>
 
+            {/* Action Buttons */}
             <Stack
                 direction={{ xs: "column", sm: "row" }}
-                spacing={1.25}
-                sx={{ gridColumn: { md: "1 / -1" } }}
+                spacing={2}
+                sx={{ pt: 2 }}
             >
                 <Button
                     variant="contained"
@@ -335,10 +360,13 @@ export function TransactionEditor({
                         || (isTransfer && (!transactionForm.transfer_account_id || transactionForm.transfer_account_id === transactionForm.account_id))
                         || (isTransfer && Number(transactionForm.is_salary_allocation_base || 0) === 1 && !transactionForm.source_salary_transaction_id)
                     }
-                    fullWidth={isMobile}
+                    fullWidth
                     sx={{
+                        py: 1.5,
                         bgcolor: "#4a6555",
-                        "&:hover": { bgcolor: "#3f594b" }
+                        "&:hover": { bgcolor: "#3f594b" },
+                        fontSize: "1rem",
+                        fontWeight: "bold"
                     }}
                 >
                     {isSaving ? "Saving..." : transactionForm.id ? "Save Entry" : "Add Entry"}
@@ -347,8 +375,9 @@ export function TransactionEditor({
                     variant="outlined"
                     onClick={onCancel}
                     disabled={isSaving}
-                    fullWidth={isMobile}
+                    fullWidth
                     sx={{
+                        py: 1.5,
                         color: "#4a6555",
                         borderColor: "rgba(74,101,85,0.35)",
                         "&:hover": {
@@ -360,6 +389,6 @@ export function TransactionEditor({
                     Cancel
                 </Button>
             </Stack>
-        </Box>
+        </Stack>
     );
 }
