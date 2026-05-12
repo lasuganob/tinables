@@ -1,6 +1,6 @@
 import { Card, CardContent, LinearProgress, Stack, Typography } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import { formatCurrency } from "../../lib/format";
+import { formatCurrency, formatDate } from "../../lib/format";
 import {
   clamp,
   daysLeft,
@@ -8,6 +8,16 @@ import {
   getBudgetProgressColor,
 } from "./helpers";
 import { InsightChip } from "./InsightChip";
+
+function formatPeriodLabel(budget) {
+  const start = budget.period_start ? formatDate(budget.period_start) : "";
+  const end = budget.period_end ? formatDate(budget.period_end) : "";
+
+  if (start && end) return `${start} - ${end}`;
+  if (start) return `From ${start}`;
+  if (end) return `Until ${end}`;
+  return "";
+}
 
 function BudgetProgressBar({ budget }) {
   const pct =
@@ -68,6 +78,7 @@ export function BudgetCard({ budget, onAddBudget, onEditBudget }) {
   const insight = getBudgetInsight(budget);
   const remaining = Number(budget.budget_amount || 0) - Number(budget.spent_amount || 0);
   const days = daysLeft(budget.period_end);
+  const periodLabel = formatPeriodLabel(budget);
 
   return (
     <Card
@@ -87,9 +98,16 @@ export function BudgetCard({ budget, onAddBudget, onEditBudget }) {
       <CardContent sx={{ p: { xs: 1.75, sm: 2 }, "&:last-child": { pb: { xs: 1.75, sm: 2 } } }}>
         <Stack spacing={1.5}>
           <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
-            <Typography fontWeight={700} fontSize={{ xs: "0.95rem", sm: "1rem" }}>
-              {budget.category_name || budget.category_id}
-            </Typography>
+            <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+              <Typography fontWeight={700} fontSize={{ xs: "0.95rem", sm: "1rem" }}>
+                {budget.category_name || budget.category_id}
+              </Typography>
+              {periodLabel ? (
+                <Typography variant="caption" color="text.secondary">
+                  {periodLabel}
+                </Typography>
+              ) : null}
+            </Stack>
             <InsightChip tone={insight.tone} label={insight.label} />
           </Stack>
 

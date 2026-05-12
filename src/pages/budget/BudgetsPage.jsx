@@ -16,6 +16,7 @@ export function BudgetsPage() {
     transactions,
     saveBudgetLocally,
     saveGoalLocally,
+    handleDelete,
     users,
   } = useAppDataContext();
 
@@ -109,6 +110,15 @@ export function BudgetsPage() {
     }
   }
 
+  async function handleDeleteBudget(budget) {
+    const deleted = await handleDelete("deleteBudget", budget.id);
+    if (deleted) {
+      setBudgetDialogOpen(false);
+      setEditingBudget(null);
+    }
+    return deleted;
+  }
+
   async function handleSaveGoal(formData) {
     setIsSaving(true);
     try {
@@ -132,6 +142,15 @@ export function BudgetsPage() {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function handleDeleteGoal(goal) {
+    const deleted = await handleDelete("deleteGoal", goal.id);
+    if (deleted) {
+      setGoalDialogOpen(false);
+      setEditingGoal(null);
+    }
+    return deleted;
   }
 
   return (
@@ -174,6 +193,7 @@ export function BudgetsPage() {
         open={budgetDialogOpen}
         onClose={() => setBudgetDialogOpen(false)}
         onSave={handleSaveBudget}
+        onDelete={handleDeleteBudget}
         isSaving={isSaving}
         categories={categories}
         budget={editingBudget}
@@ -183,6 +203,7 @@ export function BudgetsPage() {
         open={goalDialogOpen}
         onClose={() => setGoalDialogOpen(false)}
         onSave={handleSaveGoal}
+        onDelete={handleDeleteGoal}
         isSaving={isSaving}
         goal={editingGoal}
       />

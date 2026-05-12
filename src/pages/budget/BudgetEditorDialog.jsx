@@ -16,6 +16,7 @@ import {
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs from "dayjs";
 import { CategorySelector } from "../../components/CategorySelector";
+import { ConfirmDeleteDialog } from "../../components/ConfirmDeleteDialog";
 import { DialogTitleWithClose } from "../../components/DialogTitleWithClose";
 import { WeekPickerInput } from "../../components/WeekPickerInput";
 import { getWeekEndValue } from "../../lib/format";
@@ -66,9 +67,20 @@ const EMPTY_FORM = {
     note: "",
 };
 
-export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories, budget = null }) {
+export function BudgetEditorDialog({
+    open,
+    onClose,
+    onSave,
+    onDelete,
+    isSaving,
+    categories,
+    budget = null,
+}) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const isBusy = isSaving || isDeleting;
 
     const initialForm = useMemo(() => {
         if (budget) {
@@ -87,7 +99,11 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
     const [form, setForm] = useState(initialForm);
 
     // Reset form whenever dialog opens
-    const handleOpen = () => setForm(initialForm);
+    const handleOpen = () => {
+        setForm(initialForm);
+        setConfirmDeleteOpen(false);
+        setIsDeleting(false);
+    };
 
     function handlePeriodTypeChange(_, newType) {
         if (!newType) return;
@@ -118,6 +134,19 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
         });
     }
 
+    async function handleConfirmDelete() {
+        if (!budget?.id || !onDelete) return;
+        setIsDeleting(true);
+        try {
+            const deleted = await onDelete(budget);
+            if (deleted !== false) {
+                setConfirmDeleteOpen(false);
+            }
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
     // Only expense categories make sense for budgets
     const expenseCategories = useMemo(
         () => (categories || []).filter((c) => String(c.type || "").toLowerCase() === "expense"),
@@ -125,15 +154,16 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
     );
 
     return (
+        <>
         <Dialog
             open={open}
-            onClose={isSaving ? undefined : onClose}
+            onClose={isBusy ? undefined : onClose}
             fullScreen={fullScreen}
             fullWidth
             maxWidth="sm"
             TransitionProps={{ onEnter: handleOpen }}
         >
-            <DialogTitleWithClose onClose={onClose} disabled={isSaving}>
+            <DialogTitleWithClose onClose={onClose} disabled={isBusy}>
                 {budget ? "Edit Budget" : "Add Budget"}
             </DialogTitleWithClose>
 
@@ -146,7 +176,7 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
                         onChange={(v) => handleField("category_id", v)}
                         categories={expenseCategories}
                         required
-                        disabled={isSaving}
+                        disabled={isBusy}
                         placeholder="Select a category"
                     />
 
@@ -157,7 +187,7 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
                         size="small"
                         required
                         fullWidth
-                        disabled={isSaving}
+                        disabled={isBusy}
                         inputProps={{ min: 0, step: "0.01" }}
                         value={form.budget_amount}
                         onChange={(e) => handleField("budget_amount", e.target.value)}
@@ -174,7 +204,7 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
                             onChange={handlePeriodTypeChange}
                             size="small"
                             fullWidth
-                            disabled={isSaving}
+                            disabled={isBusy}
                             sx={{ flexWrap: { xs: "wrap", sm: "nowrap" } }}
                         >
                             {PERIOD_TYPES.map((pt) => (
@@ -206,6 +236,7 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
                             openTo="month"
                             value={form.period_start ? dayjs(form.period_start) : null}
                             minDate={dayjs().startOf("month")}
+                            disabled={isBusy}
                             onChange={(v) => {
                                 if (v) {
                                     setForm({
@@ -224,6 +255,7 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
                             <WeekPickerInput
                                 label="Select Week"
                                 value={form.period_start}
+                                disabled={isBusy}
                                 onChange={(v) => {
                                     if (v) {
                                         setForm({
@@ -265,14 +297,14 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
                                         setForm({ ...form, period_start: newStart, period_end: newEnd });
                                     }
                                 }}
-                                disabled={isSaving}
+                                disabled={isBusy}
                                 slotProps={{ textField: { size: "small", fullWidth: true, required: true } }}
                             />
                             <DatePicker
                                 label="Period End"
                                 value={form.period_end ? dayjs(form.period_end) : null}
                                 onChange={(v) => handleField("period_end", v ? v.format("YYYY-MM-DD") : "")}
-                                disabled={isSaving}
+                                disabled={isBusy}
                                 minDate={form.period_start ? dayjs(form.period_start) : undefined}
                                 maxDate={
                                     form.period_type === "bi-monthly" && form.period_start 
@@ -298,7 +330,7 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
                         minRows={2}
                         size="small"
                         fullWidth
-                        disabled={isSaving}
+                        disabled={isBusy}
                         value={form.note}
                         onChange={(e) => handleField("note", e.target.value)}
                     />
@@ -306,10 +338,20 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
             </DialogContent>
 
             <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+                {budget && onDelete ? (
+                    <Button
+                        color="error"
+                        onClick={() => setConfirmDeleteOpen(true)}
+                        disabled={isBusy}
+                    >
+                        Delete
+                    </Button>
+                ) : null}
+                <Box sx={{ flex: 1 }} />
                 <Button
                     variant="outlined"
                     onClick={onClose}
-                    disabled={isSaving}
+                    disabled={isBusy}
                     sx={{ color: "#4a6555", borderColor: "rgba(74,101,85,0.35)", "&:hover": { borderColor: "#4a6555", bgcolor: "rgba(74,101,85,0.08)" } }}
                 >
                     Cancel
@@ -317,12 +359,26 @@ export function BudgetEditorDialog({ open, onClose, onSave, isSaving, categories
                 <Button
                     variant="contained"
                     onClick={handleSubmit}
-                    disabled={isSaving || !isValid}
+                    disabled={isBusy || !isValid}
                     sx={{ bgcolor: "#4a6555", "&:hover": { bgcolor: "#3f594b" } }}
                 >
                     {isSaving ? "Saving..." : budget ? "Save Budget" : "Add Budget"}
                 </Button>
             </DialogActions>
         </Dialog>
+
+        <ConfirmDeleteDialog
+            open={confirmDeleteOpen}
+            title="Delete budget?"
+            message={
+                budget
+                    ? `Delete this budget for ${budget.category_name || "this category"}?`
+                    : ""
+            }
+            isSaving={isDeleting}
+            onCancel={() => setConfirmDeleteOpen(false)}
+            onConfirm={handleConfirmDelete}
+        />
+        </>
     );
 }

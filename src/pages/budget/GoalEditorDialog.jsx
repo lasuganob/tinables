@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs from "dayjs";
+import { ConfirmDeleteDialog } from "../../components/ConfirmDeleteDialog";
 import { DialogTitleWithClose } from "../../components/DialogTitleWithClose";
 
 const GOAL_TYPES = [
@@ -38,9 +39,19 @@ const EMPTY_FORM = {
     status: "active",
 };
 
-export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null }) {
+export function GoalEditorDialog({
+    open,
+    onClose,
+    onSave,
+    onDelete,
+    isSaving,
+    goal = null,
+}) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const isBusy = isSaving || isDeleting;
 
     const initialForm = useMemo(() => {
         if (goal) {
@@ -60,7 +71,11 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
 
     const [form, setForm] = useState(initialForm);
 
-    const handleOpen = () => setForm(initialForm);
+    const handleOpen = () => {
+        setForm(initialForm);
+        setConfirmDeleteOpen(false);
+        setIsDeleting(false);
+    };
 
     function handleField(field, value) {
         setForm((f) => ({ ...f, [field]: value }));
@@ -69,8 +84,7 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
     const isValid =
         form.name.trim() &&
         form.type &&
-        Number(form.target_amount) > 0 &&
-        form.target_date;
+        Number(form.target_amount) > 0;
 
     function handleSubmit() {
         if (!isValid) return;
@@ -81,22 +95,36 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
             target_amount: Number(form.target_amount),
             current_amount: Number(form.current_amount) || 0,
             monthly_target: Number(form.monthly_target) || 0,
-            target_date: form.target_date,
+            target_date: form.target_date || "",
             note: form.note,
             status: form.status || "active",
         });
     }
 
+    async function handleConfirmDelete() {
+        if (!goal?.id || !onDelete) return;
+        setIsDeleting(true);
+        try {
+            const deleted = await onDelete(goal);
+            if (deleted !== false) {
+                setConfirmDeleteOpen(false);
+            }
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
     return (
+        <>
         <Dialog
             open={open}
-            onClose={isSaving ? undefined : onClose}
+            onClose={isBusy ? undefined : onClose}
             fullScreen={fullScreen}
             fullWidth
             maxWidth="sm"
             TransitionProps={{ onEnter: handleOpen }}
         >
-            <DialogTitleWithClose onClose={onClose} disabled={isSaving}>
+            <DialogTitleWithClose onClose={onClose} disabled={isBusy}>
                 {goal ? "Edit Goal" : "Add Goal"}
             </DialogTitleWithClose>
 
@@ -108,7 +136,7 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
                         size="small"
                         required
                         fullWidth
-                        disabled={isSaving}
+                        disabled={isBusy}
                         value={form.name}
                         onChange={(e) => handleField("name", e.target.value)}
                         placeholder="e.g. Emergency Fund"
@@ -125,7 +153,7 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
                             onChange={(_, v) => v && handleField("type", v)}
                             size="small"
                             fullWidth
-                            disabled={isSaving}
+                            disabled={isBusy}
                         >
                             {GOAL_TYPES.map((gt) => (
                                 <ToggleButton
@@ -156,7 +184,7 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
                             size="small"
                             required
                             fullWidth
-                            disabled={isSaving}
+                            disabled={isBusy}
                             inputProps={{ min: 0, step: "0.01" }}
                             value={form.target_amount}
                             onChange={(e) => handleField("target_amount", e.target.value)}
@@ -166,7 +194,7 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
                             type="number"
                             size="small"
                             fullWidth
-                            disabled={isSaving}
+                            disabled={isBusy}
                             inputProps={{ min: 0, step: "0.01" }}
                             value={form.current_amount}
                             onChange={(e) => handleField("current_amount", e.target.value)}
@@ -180,24 +208,24 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
                             type="number"
                             size="small"
                             fullWidth
-                            disabled={isSaving}
+                            disabled={isBusy}
                             inputProps={{ min: 0, step: "0.01" }}
                             value={form.monthly_target}
                             onChange={(e) => handleField("monthly_target", e.target.value)}
                             helperText="Used to calculate on-track status"
                         />
                         <DatePicker
-                            label="Target Date"
+                            label="Target Date (optional)"
                             value={form.target_date ? dayjs(form.target_date) : null}
                             onChange={(v) => handleField("target_date", v ? v.format("YYYY-MM-DD") : "")}
-                            disabled={isSaving}
-                            slotProps={{ textField: { size: "small", fullWidth: true, required: true } }}
+                            disabled={isBusy}
+                            slotProps={{ textField: { size: "small", fullWidth: true } }}
                         />
                     </Box>
 
                     {/* Status (only shown for existing goals) */}
                     {goal && (
-                        <FormControl fullWidth size="small" disabled={isSaving}>
+                        <FormControl fullWidth size="small" disabled={isBusy}>
                             <InputLabel>Status</InputLabel>
                             <Select
                                 label="Status"
@@ -218,7 +246,7 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
                         minRows={2}
                         size="small"
                         fullWidth
-                        disabled={isSaving}
+                        disabled={isBusy}
                         value={form.note}
                         onChange={(e) => handleField("note", e.target.value)}
                     />
@@ -226,10 +254,20 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
             </DialogContent>
 
             <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+                {goal && onDelete ? (
+                    <Button
+                        color="error"
+                        onClick={() => setConfirmDeleteOpen(true)}
+                        disabled={isBusy}
+                    >
+                        Delete
+                    </Button>
+                ) : null}
+                <Box sx={{ flex: 1 }} />
                 <Button
                     variant="outlined"
                     onClick={onClose}
-                    disabled={isSaving}
+                    disabled={isBusy}
                     sx={{ color: "#4a6555", borderColor: "rgba(74,101,85,0.35)", "&:hover": { borderColor: "#4a6555", bgcolor: "rgba(74,101,85,0.08)" } }}
                 >
                     Cancel
@@ -237,12 +275,22 @@ export function GoalEditorDialog({ open, onClose, onSave, isSaving, goal = null 
                 <Button
                     variant="contained"
                     onClick={handleSubmit}
-                    disabled={isSaving || !isValid}
+                    disabled={isBusy || !isValid}
                     sx={{ bgcolor: "#4a6555", "&:hover": { bgcolor: "#3f594b" } }}
                 >
                     {isSaving ? "Saving..." : goal ? "Save Goal" : "Add Goal"}
                 </Button>
             </DialogActions>
         </Dialog>
+
+        <ConfirmDeleteDialog
+            open={confirmDeleteOpen}
+            title="Delete goal?"
+            message={goal ? `Delete "${goal.name || "this goal"}"?` : ""}
+            isSaving={isDeleting}
+            onCancel={() => setConfirmDeleteOpen(false)}
+            onConfirm={handleConfirmDelete}
+        />
+        </>
     );
 }
