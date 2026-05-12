@@ -1,11 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchData, loadBootstrapData, postData } from "../api/googleSheets";
+import { formatDateKeyInAppTimeZone } from "../lib/format";
 import { normaliseTransaction } from "../utils/transactions";
 
 const APP_RESUME_REFRESH_THRESHOLD_MS = 2 * 60 * 1000;
 
 function cleanValue(value) {
     return typeof value === "string" ? value.trim() : value;
+}
+
+function normaliseDateValue(value) {
+    const cleaned = cleanValue(value);
+
+    if (!cleaned) {
+        return "";
+    }
+
+    if (typeof cleaned === "string" && /^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+        return cleaned;
+    }
+
+    return formatDateKeyInAppTimeZone(cleaned) || cleaned;
 }
 
 function normaliseCategory(category) {
@@ -76,12 +91,42 @@ function normaliseUpcomingPayment(payment) {
         ...payment,
         id: cleanValue(payment.id),
         title: cleanValue(payment.title),
-        due_date: cleanValue(payment.due_date),
+        due_date: normaliseDateValue(payment.due_date),
         amount: Number(cleanValue(payment.amount) || 0),
         user: cleanValue(payment.user),
         note: cleanValue(payment.note),
         category_id: cleanValue(payment.category_id),
         status: String(cleanValue(payment.status) || "scheduled").toLowerCase()
+    };
+}
+
+function normaliseBudget(budget) {
+    return {
+        ...budget,
+        id: cleanValue(budget.id),
+        category_id: cleanValue(budget.category_id),
+        user: cleanValue(budget.user),
+        budget_amount: Number(cleanValue(budget.budget_amount) || 0),
+        period_type: String(cleanValue(budget.period_type) || "monthly").toLowerCase(),
+        period_start: normaliseDateValue(budget.period_start),
+        period_end: normaliseDateValue(budget.period_end),
+        note: cleanValue(budget.note)
+    };
+}
+
+function normaliseGoal(goal) {
+    return {
+        ...goal,
+        id: cleanValue(goal.id),
+        user: cleanValue(goal.user),
+        name: cleanValue(goal.name),
+        type: String(cleanValue(goal.type) || "savings").toLowerCase(),
+        target_amount: Number(cleanValue(goal.target_amount) || 0),
+        current_amount: Number(cleanValue(goal.current_amount) || 0),
+        target_date: normaliseDateValue(goal.target_date),
+        monthly_target: Number(cleanValue(goal.monthly_target) || 0),
+        note: cleanValue(goal.note),
+        status: String(cleanValue(goal.status) || "active").toLowerCase()
     };
 }
 
@@ -99,7 +144,7 @@ function normaliseSalaryAllocationHistory(item) {
         account_id: cleanValue(item.account_id),
         transfer_account_id: cleanValue(item.transfer_account_id),
         note: cleanValue(item.note),
-        allocated_at: cleanValue(item.allocated_at)
+        allocated_at: normaliseDateValue(item.allocated_at)
     };
 }
 
@@ -164,6 +209,8 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
     const [salaryAllocationItems, setSalaryAllocationItems] = useState([]);
     const [salaryAllocationHistory, setSalaryAllocationHistory] = useState([]);
     const [upcomingPayments, setUpcomingPayments] = useState([]);
+    const [budgets, setBudgets] = useState([]);
+    const [goals, setGoals] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const hiddenAtRef = useRef(0);
     const lastResumeRefreshAtRef = useRef(0);
@@ -183,6 +230,8 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
             setSalaryAllocationItems((data.salaryAllocationItems || []).map(normaliseSalaryAllocationItem));
             setSalaryAllocationHistory((data.salaryAllocationHistory || []).map(normaliseSalaryAllocationHistory));
             setUpcomingPayments((data.upcomingPayments || []).map(normaliseUpcomingPayment));
+            setBudgets((data.budgets || []).map(normaliseBudget));
+            setGoals((data.goals || []).map(normaliseGoal));
         } catch (err) {
             setError(err.message);
         } finally {
@@ -272,6 +321,14 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         setUpcomingPayments((await fetchData("getUpcomingPayments")).map(normaliseUpcomingPayment));
     }
 
+    async function refreshBudgets() {
+        setBudgets((await fetchData("getBudgets", selectedUser ? { user: selectedUser } : {})).map(normaliseBudget));
+    }
+
+    async function refreshGoals() {
+        setGoals((await fetchData("getGoals", selectedUser ? { user: selectedUser } : {})).map(normaliseGoal));
+    }
+
     async function refreshSalaryAllocationHistory() {
         setSalaryAllocationHistory((await fetchData("getSalaryAllocationHistory")).map(normaliseSalaryAllocationHistory));
     }
@@ -333,6 +390,18 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         return normalised;
     }
 
+    function saveBudgetLocally(budget) {
+        const normalised = normaliseBudget(budget);
+        setBudgets((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
+    function saveGoalLocally(goal) {
+        const normalised = normaliseGoal(goal);
+        setGoals((current) => upsertById(current, normalised));
+        return normalised;
+    }
+
     function saveSalaryAllocationHistoryLocally(item) {
         const normalised = normaliseSalaryAllocationHistory(item);
         setSalaryAllocationHistory((current) => upsertById(current, normalised));
@@ -374,6 +443,10 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
                 setSalaryAllocationItems((current) => removeById(current, id));
             } else if (action === "deleteUpcomingPayment") {
                 setUpcomingPayments((current) => removeById(current, id));
+            } else if (action === "deleteBudget") {
+                setBudgets((current) => removeById(current, id));
+            } else if (action === "deleteGoal") {
+                setGoals((current) => removeById(current, id));
             }
 
             setMessage(`${id} deleted.`);
@@ -397,6 +470,8 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         salaryAllocationItems,
         salaryAllocationHistory,
         upcomingPayments,
+        budgets,
+        goals,
         isLoading,
         refreshTransactions,
         refreshCategories,
@@ -406,6 +481,8 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         refreshSalaryAllocationItems,
         refreshSalaryAllocationHistory,
         refreshUpcomingPayments,
+        refreshBudgets,
+        refreshGoals,
         handleDelete,
         saveCategoryLocally,
         saveTagLocally,
@@ -415,6 +492,8 @@ export function useAppData({ selectedUser, setError, setMessage, setIsSaving }) 
         saveSalaryAllocationItemLocally,
         saveSalaryAllocationHistoryLocally,
         removeSalaryAllocationItemLocally,
-        saveUpcomingPaymentLocally
+        saveUpcomingPaymentLocally,
+        saveBudgetLocally,
+        saveGoalLocally
     };
 }

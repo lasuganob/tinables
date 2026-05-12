@@ -30,8 +30,18 @@ function getSheet(sheetName) {
 // ROW NORMALISATION
 // =============================================================================
 
+const DATE_HEADERS = new Set([
+  "date",
+  "due_date",
+  "period_start",
+  "period_end",
+  "target_date",
+  "allocated_at",
+]);
+
 function normaliseCellValue(header, value) {
-  if ((header === "date" || header === "due_date") && value instanceof Date) {
+  const key = String(header || "").trim();
+  if (DATE_HEADERS.has(key) && value instanceof Date) {
     return Utilities.formatDate(value, APP_TIME_ZONE, "yyyy-MM-dd");
   }
   return value;
@@ -41,6 +51,44 @@ function normaliseRow(headers, row) {
   return Object.fromEntries(
     headers.map((header, i) => [header, normaliseCellValue(header, row[i])]),
   );
+}
+
+// ── Shared value cleaner ──────────────────────────────────────────────────────
+function cleanValue(value) {
+  return typeof value === "string" ? value.trim() : value;
+}
+
+// ── Budgets ──────────────────────────────────────────────────────────────────
+function normaliseBudget(budget) {
+  return {
+    ...budget,
+    id: cleanValue(budget.id),
+    category_id: cleanValue(budget.category_id),
+    user: cleanValue(budget.user),
+    budget_amount: Number(cleanValue(budget.budget_amount) || 0),
+    period_type: String(
+      cleanValue(budget.period_type) || "monthly",
+    ).toLowerCase(),
+    period_start: cleanValue(budget.period_start),
+    period_end: cleanValue(budget.period_end),
+    note: cleanValue(budget.note),
+  };
+}
+// ── Goals ─────────────────────────────────────────────────────────────────────
+function normaliseGoal(goal) {
+  return {
+    ...goal,
+    id: cleanValue(goal.id),
+    user: cleanValue(goal.user),
+    name: cleanValue(goal.name),
+    type: String(cleanValue(goal.type) || "savings").toLowerCase(),
+    target_amount: Number(cleanValue(goal.target_amount) || 0),
+    current_amount: Number(cleanValue(goal.current_amount) || 0),
+    target_date: cleanValue(goal.target_date),
+    monthly_target: Number(cleanValue(goal.monthly_target) || 0),
+    note: cleanValue(goal.note),
+    status: String(cleanValue(goal.status) || "active").toLowerCase(),
+  };
 }
 
 // =============================================================================
@@ -107,7 +155,7 @@ function addRow(sheetName, payload) {
     enriched[h] !== undefined ? normaliseCellValue(h, enriched[h]) : "",
   );
   sheet.appendRow(row);
-  return { success: true, id: nextId };
+  return { success: true, ...normaliseRow(headers, row), id: nextId };
 }
 
 function updateRow(sheetName, payload) {
@@ -117,7 +165,7 @@ function updateRow(sheetName, payload) {
 
   rows[index] = { ...rows[index], ...payload };
   writeRows(sheetName, rows);
-  return { success: true, id: payload.id };
+  return { success: true, ...rows[index], id: payload.id };
 }
 
 function deleteRow(sheetName, id) {
@@ -463,6 +511,15 @@ function getUpcomingPayments(user) {
   return user ? rows.filter((row) => String(row.user) === String(user)) : rows;
 }
 
+function getBudgets(user) {
+  const rows = getRows("budgets").map(normaliseBudget);
+  return user ? rows.filter((r) => String(r.user) === String(user)) : rows;
+}
+function getGoals(user) {
+  const rows = getRows("goals").map(normaliseGoal);
+  return user ? rows.filter((r) => String(r.user) === String(user)) : rows;
+}
+
 function markUpcomingPaymentPaid(id, status) {
   if (!getRowById("upcoming_payments", id))
     throw new Error(`Upcoming payment not found for id ${id}`);
@@ -520,6 +577,8 @@ const GET_HANDLERS = {
   getSalaryAllocationHistory: (e) =>
     getSalaryAllocationHistory(e.parameter.source_transaction_id),
   getUpcomingPayments: (e) => getUpcomingPayments(e.parameter.user),
+  getBudgets: (e) => getBudgets(e.parameter.user),
+  getGoals: (e) => getGoals(e.parameter.user),
 };
 
 const POST_HANDLERS = {
@@ -573,6 +632,14 @@ const POST_HANDLERS = {
     deleteRow("upcoming_payments", payload.id),
   markUpcomingPaymentPaid: ({ payload }) =>
     markUpcomingPaymentPaid(payload.id, payload.status),
+
+  addBudget: ({ payload }) => addRow("budgets", payload),
+  updateBudget: ({ payload }) => updateRow("budgets", payload),
+  deleteBudget: ({ payload }) => deleteRow("budgets", payload.id),
+
+  addGoal: ({ payload }) => addRow("goals", payload),
+  updateGoal: ({ payload }) => updateRow("goals", payload),
+  deleteGoal: ({ payload }) => deleteRow("goals", payload.id),
 };
 
 function doGet(e) {

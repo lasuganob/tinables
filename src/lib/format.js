@@ -41,6 +41,21 @@ export function formatDateKey(value) {
   ].join("-");
 }
 
+export function formatDateKeyInAppTimeZone(value) {
+  const parsedDate = value instanceof Date ? value : parseDateValue(value);
+
+  if (!parsedDate || Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  const parts = getTimeZoneParts(parsedDate);
+  return [
+    getPartValue(parts, "year"),
+    getPartValue(parts, "month"),
+    getPartValue(parts, "day")
+  ].join("-");
+}
+
 export function getWeekStart(value) {
   const parsedDate = value instanceof Date ? value : parseDateValue(value);
 

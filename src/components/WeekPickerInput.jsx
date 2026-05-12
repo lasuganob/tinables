@@ -18,6 +18,7 @@ export function WeekPickerInput({
     onChange,
     label = "Week",
     placeholder = "Pick a week",
+    disabled = false,
     popoverProps,
     styles = {}
 }) {
@@ -50,6 +51,7 @@ export function WeekPickerInput({
             firstDayOfWeek={1}
             withWeekNumbers
             clearable
+            disabled={disabled}
             size="sm"
             popoverProps={popoverProps}
             getDayProps={(date) => {

@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AccountSelector } from "../../components/AccountSelector";
+import { CategorySelector } from "../../components/CategorySelector";
 
 export function TransactionEditor({
     transactionForm,
@@ -224,20 +225,14 @@ export function TransactionEditor({
             ) : null}
 
             {!isTransfer ? (
-                <FormControl fullWidth size="small" disabled={isSaving} required>
-                    <InputLabel required>Category</InputLabel>
-                    <Select
-                        label="Category"
-                        value={String(transactionForm.category_id ?? "")}
-                        onChange={(event) => setTransactionForm({ ...transactionForm, category_id: event.target.value })}
-                        required
-                    >
-                        <MenuItem value="">Select a category</MenuItem>
-                        {filteredCategories.map((category) => (
-                            <MenuItem key={category.id} value={String(category.id)}>{category.name}</MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                <CategorySelector
+                    label="Category"
+                    value={transactionForm.category_id}
+                    onChange={(value) => setTransactionForm({ ...transactionForm, category_id: value })}
+                    categories={filteredCategories}
+                    required
+                    disabled={isSaving}
+                />
             ) : null}
 
             <FormControl fullWidth size="small" disabled={isSaving} required>

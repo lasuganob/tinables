@@ -22,6 +22,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
     salaryAllocationItems,
     salaryAllocationHistory,
     upcomingPayments,
+    budgets,
+    goals,
     isLoading,
     refreshTransactions,
     refreshCategories,
@@ -31,6 +33,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
     refreshSalaryAllocationItems,
     refreshSalaryAllocationHistory,
     refreshUpcomingPayments,
+    refreshBudgets,
+    refreshGoals,
     handleDelete,
     saveCategoryLocally,
     saveTagLocally,
@@ -41,6 +45,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
     saveSalaryAllocationHistoryLocally,
     removeSalaryAllocationItemLocally,
     saveUpcomingPaymentLocally,
+    saveBudgetLocally,
+    saveGoalLocally,
   } = useAppData({ selectedUser, ...feedback });
 
   // Keep the filter-provider bridge in sync with the authoritative transactions list.
@@ -62,6 +68,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
       salaryAllocationItems,
       salaryAllocationHistory,
       upcomingPayments,
+      budgets,
+      goals,
       isLoading,
       refreshTransactions,
       refreshCategories,
@@ -71,6 +79,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
       refreshSalaryAllocationItems,
       refreshSalaryAllocationHistory,
       refreshUpcomingPayments,
+      refreshBudgets,
+      refreshGoals,
       handleDelete,
       saveCategoryLocally,
       saveTagLocally,
@@ -81,6 +91,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
       saveSalaryAllocationHistoryLocally,
       removeSalaryAllocationItemLocally,
       saveUpcomingPaymentLocally,
+      saveBudgetLocally,
+      saveGoalLocally,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -94,6 +106,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
       salaryAllocationItems,
       salaryAllocationHistory,
       upcomingPayments,
+      budgets,
+      goals,
       isLoading,
       refreshTransactions,
       refreshCategories,
@@ -103,6 +117,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
       refreshSalaryAllocationItems,
       refreshSalaryAllocationHistory,
       refreshUpcomingPayments,
+      refreshBudgets,
+      refreshGoals,
       handleDelete,
       saveCategoryLocally,
       saveTagLocally,
@@ -113,6 +129,8 @@ export function AppDataProvider({ onTransactionsChange, children }) {
       saveSalaryAllocationHistoryLocally,
       removeSalaryAllocationItemLocally,
       saveUpcomingPaymentLocally,
+      saveBudgetLocally,
+      saveGoalLocally,
     ],
   );
 

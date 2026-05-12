@@ -15,7 +15,7 @@ function getConnectionHint() {
     "2. Deploy Apps Script as Web app with access set to Anyone.",
     "3. If you changed the script, create a new deployment or update the existing deployment.",
     "4. Open the URL directly in a browser with ?action=getUsers and confirm it returns JSON.",
-    "5. Confirm the sheet has tabs named transactions, categories, tags, and users."
+    "5. Confirm the sheet has tabs named transactions, categories, tags, and users.",
   ].join("\n");
 }
 
@@ -45,8 +45,8 @@ async function parseResponse(response) {
       [
         "Apps Script returned a non-JSON response.",
         `HTTP status: ${response.status}`,
-        "This usually means the URL points to the wrong deployment, requires Google sign-in, or returned an HTML error page."
-      ].join("\n")
+        "This usually means the URL points to the wrong deployment, requires Google sign-in, or returned an HTML error page.",
+      ].join("\n"),
     );
   }
 
@@ -63,7 +63,7 @@ export async function fetchData(action, params) {
       method: "GET",
       mode: "cors",
       redirect: "follow",
-      cache: "no-store"
+      cache: "no-store",
     });
     return parseResponse(response);
   } catch (error) {
@@ -83,9 +83,9 @@ export async function postData(action, payload) {
       mode: "cors",
       redirect: "follow",
       headers: {
-        "Content-Type": "text/plain;charset=utf-8"
+        "Content-Type": "text/plain;charset=utf-8",
       },
-      body: JSON.stringify({ action, payload })
+      body: JSON.stringify({ action, payload }),
     });
 
     return parseResponse(response);
@@ -98,7 +98,20 @@ export async function postData(action, payload) {
 }
 
 export async function loadBootstrapData(user, account) {
-  const [transactions, categories, tags, users, accounts, accountTypes, salaryAllocations, salaryAllocationItems, salaryAllocationHistory, upcomingPayments] = await Promise.all([
+  const [
+    transactions,
+    categories,
+    tags,
+    users,
+    accounts,
+    accountTypes,
+    salaryAllocations,
+    salaryAllocationItems,
+    salaryAllocationHistory,
+    upcomingPayments,
+    budgets,
+    goals,
+  ] = await Promise.all([
     fetchData("getTransactions", user ? { user } : {}),
     fetchData("getCategories"),
     fetchData("getTags"),
@@ -108,7 +121,9 @@ export async function loadBootstrapData(user, account) {
     fetchData("getSalaryAllocations"),
     fetchData("getSalaryAllocationItems"),
     fetchData("getSalaryAllocationHistory"),
-    fetchData("getUpcomingPayments")
+    fetchData("getUpcomingPayments"),
+    fetchData("getBudgets", user ? { user } : {}),
+    fetchData("getGoals", user ? { user } : {}),
   ]);
 
   return {
@@ -121,6 +136,8 @@ export async function loadBootstrapData(user, account) {
     salaryAllocations,
     salaryAllocationItems,
     salaryAllocationHistory,
-    upcomingPayments
+    upcomingPayments,
+    budgets,
+    goals,
   };
 }
