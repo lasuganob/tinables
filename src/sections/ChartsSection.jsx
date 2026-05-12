@@ -126,7 +126,7 @@ export function ChartsSection({
             <ChartSkeleton />
           ) : (
             <Suspense fallback={<ChartSkeleton />}>
-              <PieChart data={pieData} />
+              <PieChart data={pieData} variant="donut" showCenterTotal />
             </Suspense>
           )}
         </Paper>
@@ -242,7 +242,7 @@ export function ChartsSection({
             <Skeleton variant="rounded" height={360} />
           ) : (
             <Suspense fallback={<Skeleton variant="rounded" height={360} />}>
-              <PieChart data={pieData} />
+              <PieChart data={pieData} variant="donut" showCenterTotal />
             </Suspense>
           )}
         </DialogContent>

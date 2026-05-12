@@ -13,12 +13,30 @@ function formatWeekLabel(value) {
     return `${dayjs(weekStart).format("MMM D")} - ${dayjs(weekEnd).format("MMM D, YYYY")}`;
 }
 
-export function WeekPickerInput({ value, onChange, label = "Week", placeholder = "Pick a week" }) {
+export function WeekPickerInput({
+    value,
+    onChange,
+    label = "Week",
+    placeholder = "Pick a week",
+    popoverProps,
+    styles = {}
+}) {
     const selectedWeekStart = getWeekStartValue(value);
     const selectedWeekEnd = getWeekEndValue(value);
+    const mergedStyles = {
+        ...styles,
+        input: {
+            minHeight: 40,
+            borderRadius: 20,
+            borderColor: "rgba(0, 0, 0, 0.23)",
+            fontFamily: "\"Avenir Next\", \"Segoe UI\", sans-serif",
+            ...styles.input,
+        },
+    };
 
     return (
         <DatePickerInput
+            label={label}
             placeholder={placeholder}
             value={value || null}
             onChange={(nextValue) => onChange(nextValue ? getWeekStartValue(nextValue) : "")}
@@ -33,6 +51,7 @@ export function WeekPickerInput({ value, onChange, label = "Week", placeholder =
             withWeekNumbers
             clearable
             size="sm"
+            popoverProps={popoverProps}
             getDayProps={(date) => {
                 const dateKey = formatDateKey(date);
                 const isInSelectedWeek = Boolean(
@@ -60,14 +79,7 @@ export function WeekPickerInput({ value, onChange, label = "Week", placeholder =
                     }
                 };
             }}
-            styles={{
-                input: {
-                    minHeight: 40,
-                    borderRadius: 20,
-                    borderColor: "rgba(0, 0, 0, 0.23)",
-                    fontFamily: "\"Avenir Next\", \"Segoe UI\", sans-serif",
-                }
-            }}
+            styles={mergedStyles}
         />
     );
 }
