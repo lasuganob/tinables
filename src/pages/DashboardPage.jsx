@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack, Typography } from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { useAppDataContext } from "../context/AppDataContext";
 import { useAppFiltersContext } from "../context/AppFiltersContext";
+import { useAuth } from "../auth/AuthGate";
 import {
   formatDateKey,
   getWeekEndValue,
@@ -202,6 +204,7 @@ function buildPercentInsight(currentValue, previousValue, label, { lowerIsBetter
 
 export function DashboardPage() {
   const utilitiesSeriesTagNames = ["Rent", "Internet", "Electricity", "Water"];
+  const { onLogout } = useAuth();
 
   const {
     transactions,
@@ -469,6 +472,34 @@ export function DashboardPage() {
         isUtilitiesChart={isUtilitiesChart}
         utilitySeriesTags={utilitySeriesTags}
       />
+
+      <Box
+        sx={{
+          position: "fixed",
+          left: { xs: 16, md: 284 },
+          bottom: { xs: 16, md: 24 },
+          zIndex: theme => theme.zIndex.appBar - 1,
+        }}
+      >
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<LogoutRoundedIcon />}
+          onClick={onLogout}
+          sx={{
+            borderRadius: 2.5,
+            px: 2,
+            py: 1,
+            backgroundColor: "background.paper",
+            boxShadow: "0 10px 30px rgba(15, 23, 42, 0.12)",
+            "&:hover": {
+              backgroundColor: "background.paper",
+            },
+          }}
+        >
+          Logout
+        </Button>
+      </Box>
     </Stack>
   );
 }
