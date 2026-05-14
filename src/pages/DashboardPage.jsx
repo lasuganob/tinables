@@ -473,14 +473,7 @@ export function DashboardPage() {
         utilitySeriesTags={utilitySeriesTags}
       />
 
-      <Box
-        sx={{
-          position: "fixed",
-          left: { xs: 16, md: 284 },
-          bottom: { xs: 16, md: 24 },
-          zIndex: theme => theme.zIndex.appBar - 1,
-        }}
-      >
+      <Box>
         <Button
           variant="outlined"
           color="error"
