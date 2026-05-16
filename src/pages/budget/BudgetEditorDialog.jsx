@@ -205,7 +205,7 @@ export function BudgetEditorDialog({
                             size="small"
                             fullWidth
                             disabled={isBusy}
-                            sx={{ flexWrap: { xs: "wrap", sm: "nowrap" } }}
+                            sx={{ flexWrap: "nowrap" }}
                         >
                             {PERIOD_TYPES.map((pt) => (
                                 <ToggleButton
@@ -214,7 +214,7 @@ export function BudgetEditorDialog({
                                     sx={{
                                         fontWeight: 600,
                                         fontSize: "0.78rem",
-                                        flex: { xs: "1 0 40%", sm: 1 },
+                                        flex: 1,
                                         "&.Mui-selected": {
                                             bgcolor: "#4a6555",
                                             color: "white",

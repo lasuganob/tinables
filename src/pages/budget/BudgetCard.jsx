@@ -57,7 +57,7 @@ export function BudgetCard({ budget, onAddBudget, onEditBudget }) {
           border: "2px dashed",
           borderColor: "divider",
           cursor: "pointer",
-          minHeight: 160,
+          minHeight: 140,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

@@ -9,8 +9,10 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AccountSelector } from "../../components/AccountSelector";
 import { CategorySelector } from "../../components/CategorySelector";
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { useAppFeedbackContext } from "../../context/AppDataContext";
+import { AlertBox } from "../../components/AlertBox";
 
 export function TransactionEditor({
     transactionForm,
@@ -35,6 +37,7 @@ export function TransactionEditor({
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const [isTagsMenuOpen, setIsTagsMenuOpen] = useState(false);
+    const { error, setError } = useAppFeedbackContext();
 
     const salaryCategoryIds = useMemo(
         () => new Set(
@@ -170,6 +173,14 @@ export function TransactionEditor({
 
     return (
         <Stack spacing={3}>
+            {error && (
+                <AlertBox
+                    message={error}
+                    severity="error"
+                    onClose={() => setError("")}
+                    sx={{ m: 0 }}
+                />
+            )}
             {/* 1. Transaction Type */}
             <Box>
                 <ToggleButtonGroup
@@ -200,7 +211,7 @@ export function TransactionEditor({
                 >
                     <ToggleButton value="expense" sx={{ py: 1.5, "&.Mui-selected": { color: "white", backgroundColor: "error.main" } }} ><ArrowDownwardIcon />Expense</ToggleButton>
                     <ToggleButton value="income" sx={{ py: 1.5, "&.Mui-selected": { color: "white", backgroundColor: "primary.main" } }} ><ArrowUpwardIcon />Income</ToggleButton>
-                    <ToggleButton value="transfer" sx={{ py: 1.5, "&.Mui-selected": { color: "white", backgroundColor: "warning.main" } }} ><ArrowForwardIcon />Transfer</ToggleButton>
+                    <ToggleButton value="transfer" sx={{ py: 1.5, "&.Mui-selected": { color: "white", backgroundColor: "warning.main" } }} ><SwapHorizIcon />Transfer</ToggleButton>
                 </ToggleButtonGroup>
             </Box>
 

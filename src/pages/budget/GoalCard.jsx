@@ -48,7 +48,7 @@ export function GoalCard({ goal, onAddGoal, onEditGoal }) {
           border: "2px dashed",
           borderColor: "divider",
           cursor: "pointer",
-          minHeight: 180,
+          minHeight: 140,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
