@@ -1,5 +1,4 @@
 const PASSPHRASE = import.meta.env.VITE_APP_PASSPHRASE;
-const SESSION_DURATION = 4 * 60 * 60 * 1000; // 2 hours in milliseconds
 const SHA256_K = [
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
   0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -100,6 +99,8 @@ function sha256Fallback(input) {
     .join("");
 }
 
+const PASSPHRASE_HASH = sha256Fallback(PASSPHRASE ?? "");
+
 /**
  * Hashes a string using SHA-256. Web Crypto is unavailable on plain HTTP LAN
  * origins in some browsers, so a JS fallback keeps local network auth working.
@@ -127,14 +128,10 @@ async function hash(input) {
  * @returns {Promise<boolean>}
  */
 export async function login(input) {
-  const [inputHash, passphraseHash] = await Promise.all([
-    hash(input),
-    hash(PASSPHRASE),
-  ]);
+  const inputHash = await hash(input);
 
-  if (inputHash === passphraseHash) {
-    localStorage.setItem("cf_auth", passphraseHash);
-    localStorage.setItem("cf_last_active", Date.now().toString());
+  if (inputHash === PASSPHRASE_HASH) {
+    localStorage.setItem("cf_auth", PASSPHRASE_HASH);
     return true;
   }
 
@@ -149,12 +146,10 @@ export async function login(input) {
  */
 export function isAuthenticated() {
   const storedHash = localStorage.getItem("cf_auth");
-  const lastActive = localStorage.getItem("cf_last_active");
 
-  if (!storedHash || !lastActive) return false;
+  if (!storedHash) return false;
 
-  const isExpired = Date.now() - parseInt(lastActive) > SESSION_DURATION;
-  if (isExpired) {
+  if (storedHash !== PASSPHRASE_HASH) {
     logout();
     return false;
   }
@@ -167,9 +162,7 @@ export function isAuthenticated() {
  * Call this on any user interaction to keep the session alive.
  */
 export function refreshSession() {
-  if (localStorage.getItem("cf_auth")) {
-    localStorage.setItem("cf_last_active", Date.now().toString());
-  }
+  // Session no longer expires based on activity
 }
 
 /**
@@ -177,5 +170,4 @@ export function refreshSession() {
  */
 export function logout() {
   localStorage.removeItem("cf_auth");
-  localStorage.removeItem("cf_last_active");
 }

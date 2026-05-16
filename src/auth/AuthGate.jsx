@@ -11,13 +11,8 @@ import {
   Typography,
 } from '@mui/material';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
-import { isAuthenticated, login, refreshSession, logout } from './auth';
+import { isAuthenticated, login, logout } from './auth';
 
-// Events that count as user activity
-const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
-
-// How often to check if the session has expired (in ms)
-const EXPIRY_CHECK_INTERVAL = 60 * 1000; // every 1 minute
 const UNLOCK_DELAY = 2000;
 
 const AuthContext = createContext(null);
@@ -57,24 +52,6 @@ export default function AuthGate({ children }) {
   const [unlocking, setUnlocking] = useState(false);
   const [unlockProgress, setUnlockProgress] = useState(0);
 
-  // Activity tracking + expiry polling while logged in
-  useEffect(() => {
-    if (!authed) return;
-
-    const refresh = () => refreshSession();
-    ACTIVITY_EVENTS.forEach(e => window.addEventListener(e, refresh));
-
-    const interval = setInterval(() => {
-      if (!isAuthenticated()) {
-        setAuthed(false);
-      }
-    }, EXPIRY_CHECK_INTERVAL);
-
-    return () => {
-      ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, refresh));
-      clearInterval(interval);
-    };
-  }, [authed]);
 
   useEffect(() => {
     if (!unlocking) return undefined;
