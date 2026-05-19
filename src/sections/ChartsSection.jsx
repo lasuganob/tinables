@@ -20,6 +20,7 @@ import OpenInFullRoundedIcon from "@mui/icons-material/OpenInFullRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import DonutLargeRoundedIcon from "@mui/icons-material/DonutLargeRounded";
 import { DialogTitleWithClose } from "../components/DialogTitleWithClose";
+import { CategorySelector } from "../components/CategorySelector";
 
 const LineChart = lazy(() =>
   import("../components/LineChart").then((module) => ({ default: module.LineChart }))
@@ -156,21 +157,13 @@ export function ChartsSection({
                     : { xs: "1fr", md: "minmax(220px, 280px)" },
                 }}
               >
-                <FormControl fullWidth size="small">
-                  <InputLabel>Category</InputLabel>
-                  <Select
-                    label="Category"
-                    value={chartCategoryId}
-                    onChange={(event) => setChartCategoryId(event.target.value)}
-                  >
-                    <MenuItem value="">All categories</MenuItem>
-                    {chartCategoryOptions.map((category) => (
-                      <MenuItem key={category.id} value={String(category.id)}>
-                        {category.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <CategorySelector
+                  value={chartCategoryId}
+                  onChange={setChartCategoryId}
+                  categories={chartCategoryOptions}
+                  label="Category"
+                  placeholder="All categories"
+                />
 
                 {isUtilitiesChart ? (
                   <FormControl fullWidth size="small">

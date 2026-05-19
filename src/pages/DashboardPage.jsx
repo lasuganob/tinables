@@ -380,10 +380,10 @@ export function DashboardPage() {
   );
 
   const isUtilitiesChart = useMemo(
-    () =>
-      String(selectedChartCategory?.name || "")
-        .trim()
-        .toLowerCase() === "utilities",
+    () => {
+      const name = String(selectedChartCategory?.name || "").trim().toLowerCase();
+      return name.includes("utilit");
+    },
     [selectedChartCategory],
   );
 
