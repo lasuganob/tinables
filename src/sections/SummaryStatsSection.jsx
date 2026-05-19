@@ -111,6 +111,7 @@ export function SummaryStatsSection({
                             storageKey="dashboard-accounts-summary-visible"
                             insight={statInsights.accounts?.text}
                             insightTone={statInsights.accounts?.tone}
+                            trendIcon={statInsights.accounts?.trendIcon}
                         />
                         <StatCard
                             label="Income"
@@ -119,6 +120,7 @@ export function SummaryStatsSection({
                             storageKey="dashboard-income-visible"
                             insight={statInsights.income?.text}
                             insightTone={statInsights.income?.tone}
+                            trendIcon={statInsights.income?.trendIcon}
                         />
                         <StatCard
                             label="Expenses"
@@ -127,6 +129,7 @@ export function SummaryStatsSection({
                             storageKey="dashboard-expenses-visible"
                             insight={statInsights.expenses?.text}
                             insightTone={statInsights.expenses?.tone}
+                            trendIcon={statInsights.expenses?.trendIcon}
                         />
                         <StatCard
                             label="Net Cashflow"
@@ -135,6 +138,7 @@ export function SummaryStatsSection({
                             storageKey="dashboard-net-cashflow-visible"
                             insight={statInsights.netCashflow?.text}
                             insightTone={statInsights.netCashflow?.tone}
+                            trendIcon={statInsights.netCashflow?.trendIcon}
                         />
                     </>
                 )}

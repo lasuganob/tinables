@@ -23,6 +23,9 @@ import { SummaryStatsSection } from "../sections/SummaryStatsSection";
 import { ChartsSection } from "../sections/ChartsSection";
 import { DashboardInsightsSection } from "../sections/DashboardInsightsSection";
 
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+
 function addDays(dateValue, days) {
   const date = parseDateValue(dateValue);
 
@@ -170,7 +173,7 @@ function getAccountsAtPeriodEnd(accounts, transactions, periodEndDate) {
   });
 }
 
-function buildPercentInsight(currentValue, previousValue, label, { lowerIsBetter = false } = {}) {
+function buildPercentInsight(currentValue, previousValue, label = {}, { lowerIsBetter = false } = {}) {
   const current = Number(currentValue || 0);
   const previous = Number(previousValue || 0);
 
@@ -196,10 +199,13 @@ function buildPercentInsight(currentValue, previousValue, label, { lowerIsBetter
         ? isNegativeMovement ? "positive" : "negative"
         : isPositiveMovement ? "positive" : "negative";
   const sign = percentage > 0 ? "+" : "";
+  const color = tone === "positive" ? "success" : tone === "negative" ? "error" : "secondary";
+  const trendIcon = isPositiveMovement ? <TrendingUpIcon color={color} fontSize="small" /> : <TrendingDownIcon color={color} fontSize="small" />;
 
   return {
     text: `${sign}${percentage.toFixed(1)}% vs ${label}`,
     tone,
+    trendIcon,
   };
 }
 

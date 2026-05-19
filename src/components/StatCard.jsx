@@ -3,8 +3,6 @@ import HelpIcon from '@mui/icons-material/Help';
 import { useEffect, useState } from "react";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 
 function getStorageKey(storageKey, label) {
     return storageKey || `tinables:stat-card-visibility:${String(label).toLowerCase().replace(/\s+/g, "-")}`;
@@ -18,7 +16,8 @@ export function StatCard({
     onAction,
     storageKey = "",
     insight = "",
-    insightTone = "neutral"
+    insightTone = "neutral",
+    trendIcon = ""
 }) {
     const toneStyles = {
         income: { color: "white", fontWeight: "bold", bgcolor: "success.main" },
@@ -87,7 +86,7 @@ export function StatCard({
                     </Stack>
                     {insight ? (
                         <Stack direction="row" spacing={0.5} alignItems="center">
-                            {insightTone === "positive" ? <TrendingUpIcon color="success" /> : insightTone === "negative" ? <TrendingDownIcon color="error" /> : null}
+                            {trendIcon}
                             <Typography
                                 variant="caption"
                                 color={insightColors[insightTone] || insightColors.neutral}
