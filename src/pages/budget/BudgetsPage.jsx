@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Stack, Typography } from "@mui/material";
 import { postData } from "../../api/googleSheets";
 import { BudgetEditorDialog } from "./BudgetEditorDialog";
@@ -8,7 +9,8 @@ import { BudgetSummaryCards } from "./BudgetSummaryCards";
 import { BudgetTabs } from "./BudgetTabs";
 
 export function BudgetsPage() {
-  const [activeTab, setActiveTab] = useState(0);
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab ?? 0);
   const {
     budgets,
     goals,

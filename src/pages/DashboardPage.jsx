@@ -21,6 +21,7 @@ import {
 
 import { SummaryStatsSection } from "../sections/SummaryStatsSection";
 import { ChartsSection } from "../sections/ChartsSection";
+import { DashboardInsightsSection } from "../sections/DashboardInsightsSection";
 
 function addDays(dateValue, days) {
   const date = parseDateValue(dateValue);
@@ -472,6 +473,8 @@ export function DashboardPage() {
         isUtilitiesChart={isUtilitiesChart}
         utilitySeriesTags={utilitySeriesTags}
       />
+
+      <DashboardInsightsSection isViewLoading={isViewLoading} />
 
       <Box>
         <Button
